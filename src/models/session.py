@@ -1,8 +1,11 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from ..config.settings import settings
+from src.config.constants import DATABASE_URL
+import logging
 
-engine = create_engine(settings.database_url)
+logger = logging.getLogger(__name__)
+
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def get_db():
