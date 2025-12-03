@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
 from typing import List, Optional
@@ -6,18 +6,33 @@ from datetime import date
 from decimal import Decimal
 from ...models.session import get_db
 from ...models.hrms_models import Attendance, Employee, Department, PolicyMaster, LeaveManagement
-from ...schemas.attendance import AttendanceResponse, AttendanceBreakdown, DailyAttendanceRecord
+from ...schemas.attendance import AttendanceResponse, AttendanceRecord, AttendanceSummary, AttendanceBreakdown, DailyAttendanceRecord
 
 router = APIRouter()
 
-@router.get("/attendance", response_model=List[AttendanceResponse])
+def get_current_employee():
+    """Replace with actual authentication logic"""
+    return {
+        "employee_id": "EMP001",
+        "designation": "HR Manager"
+    }
+
+def check_hr_access(current_employee: dict = Depends(get_current_employee)):
+    """Check if user is HR Manager or HR Executive"""
+    allowed_roles = ["HR Manager", "HR Executive"]
+    if current_employee["designation"] not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied. Only HR Manager and HR Executive can access attendance tracking."
+        )
+    return current_employee
+
+@router.get("/attendance", response_model=AttendanceResponse)
 def get_attendance(
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2000),
-    employee_id: Optional[str] = Query(None),
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_employee: dict = Depends(check_hr_access)
 ):
     query = (
         db.query(
@@ -39,13 +54,27 @@ def get_attendance(
         query = query.filter(extract('month', Attendance.attendance_date) == month)
     if year:
         query = query.filter(extract('year', Attendance.attendance_date) == year)
-    if employee_id:
-        query = query.filter(Attendance.employee_id == employee_id)
     
-    results = query.offset(skip).limit(limit).all()
+    results = query.all()
     
-    return [
-        AttendanceResponse(
+    total_employees = db.query(func.count(func.distinct(Employee.employee_id))).scalar()
+    
+    present_count = sum(1 for r in results if r.status and r.status.lower() in ['present', 'late'])
+    absent_count = sum(1 for r in results if r.status and r.status.lower() == 'absent')
+    leave_count = sum(1 for r in results if r.status and r.status.lower() == 'leave')
+    
+    attendance_rate = (present_count / total_employees * 100) if total_employees > 0 else 0
+    
+    summary = AttendanceSummary(
+        total_employees=total_employees,
+        present=present_count,
+        absent=absent_count,
+        on_leave=leave_count,
+        attendance_rate=round(attendance_rate, 2)
+    )
+    
+    records = [
+        AttendanceRecord(
             employee_id=row.employee_id,
             employee_name=row.employee_name,
             department=row.department,
@@ -57,6 +86,8 @@ def get_attendance(
         )
         for row in results
     ]
+    
+    return AttendanceResponse(summary=summary, records=records)
 
 @router.get("/attendance/breakdown", response_model=AttendanceBreakdown)
 def get_attendance_breakdown(
@@ -64,7 +95,8 @@ def get_attendance_breakdown(
     employee_name: Optional[str] = Query(None),
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2000),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_employee: dict = Depends(check_hr_access)
 ):
     if not employee_id and not employee_name:
         raise HTTPException(status_code=400, detail="Either employee_id or employee_name is required")

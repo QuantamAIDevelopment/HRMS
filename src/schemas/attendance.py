@@ -3,7 +3,7 @@ from datetime import date, time
 from typing import Optional, List
 from decimal import Decimal
 
-class AttendanceResponse(BaseModel):
+class AttendanceRecord(BaseModel):
     employee_id: str
     employee_name: str
     department: str
@@ -16,6 +16,20 @@ class AttendanceResponse(BaseModel):
     class Config:
         from_attributes = True
 
+class AttendanceSummary(BaseModel):
+    total_employees: int
+    present: int
+    absent: int
+    on_leave: int
+    attendance_rate: float
+
+class AttendanceResponse(BaseModel):
+    summary: AttendanceSummary
+    records: List[AttendanceRecord]
+
+    class Config:
+        from_attributes = True
+
 class DailyAttendanceRecord(BaseModel):
     date: date
     day: str
@@ -23,6 +37,9 @@ class DailyAttendanceRecord(BaseModel):
     punch_out: Optional[time]
     work_hours: Optional[Decimal]
     status: Optional[str]
+
+    class Config:
+        from_attributes = True
 
 class AttendanceBreakdown(BaseModel):
     employee_id: str

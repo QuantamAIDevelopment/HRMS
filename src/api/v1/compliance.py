@@ -5,6 +5,7 @@ from typing import List, Optional
 import base64
 import io
 from ...models.session import get_db
+from ...models.hrms_models import ComplianceDocument
 from ...schemas.compliance_document import (
     ComplianceDocumentCreate,
     ComplianceDocumentUpdate,
@@ -67,14 +68,16 @@ def get_all_documents(
         category=category
     )
 
-@router.get("/documents/{document_id}", response_model=ComplianceDocumentDownload)
-def get_document(
-    document_id: int,
+@router.get("/documents/title/{title}", response_model=ComplianceDocumentDownload)
+def get_document_by_title(
+    title: str,
     db: Session = Depends(get_db),
     current_employee: dict = Depends(get_current_employee)
 ):
-    """Get document details (All users)"""
-    document = ComplianceService.get_document(db, document_id)
+    """Get document details by title (All users)"""
+    document = db.query(ComplianceDocument).filter(
+        ComplianceDocument.title == title
+    ).first()
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -104,13 +107,27 @@ def download_document(
     )
 
 @router.put("/documents/{document_id}", response_model=ComplianceDocumentResponse)
-def update_document(
+async def update_document(
     document_id: int,
-    document_update: ComplianceDocumentUpdate,
+    title: str = Form(...),
+    category: str = Form(...),
+    description: Optional[str] = Form(None),
+    uploaded_by: str = Form(...),
+    file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_employee: dict = Depends(get_current_employee)
 ):
     """Update a compliance document (HR Manager/Executive only)"""
+    file_content = await file.read()
+    base64_content = base64.b64encode(file_content).decode('utf-8')
+    
+    document_update = ComplianceDocumentUpdate(
+        title=title,
+        category=category.capitalize(),
+        description=description,
+        uploaded_document=base64_content
+    )
+    
     return ComplianceService.update_document(
         db=db,
         document_id=document_id,
