@@ -135,16 +135,4 @@ async def update_document(
         designation=current_employee["designation"]
     )
 
-@router.delete("/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_document(
-    document_id: int,
-    db: Session = Depends(get_db),
-    current_employee: dict = Depends(get_current_employee)
-):
-    """Delete a compliance document (HR Manager/Executive only)"""
-    ComplianceService.delete_document(
-        db=db,
-        document_id=document_id,
-        designation=current_employee["designation"]
-    )
-    return None
+
