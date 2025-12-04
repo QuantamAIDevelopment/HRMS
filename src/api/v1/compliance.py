@@ -85,14 +85,16 @@ def get_document_by_title(
         )
     return document
 
-@router.get("/documents/{document_id}/download")
+@router.get("/documents/{title}/download")
 def download_document(
-    document_id: int,
+    title: str,
     db: Session = Depends(get_db),
     current_employee: dict = Depends(get_current_employee)
 ):
-    """Download document file (All users)"""
-    document = ComplianceService.get_document(db, document_id)
+    """Download document file by title (All users)"""
+    document = db.query(ComplianceDocument).filter(
+        ComplianceDocument.title == title
+    ).first()
     if not document:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -106,33 +108,5 @@ def download_document(
         headers={"Content-Disposition": f"attachment; filename={document.title}.pdf"}
     )
 
-@router.put("/documents/{document_id}", response_model=ComplianceDocumentResponse)
-async def update_document(
-    document_id: int,
-    title: str = Form(...),
-    category: str = Form(...),
-    description: Optional[str] = Form(None),
-    uploaded_by: str = Form(...),
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db),
-    current_employee: dict = Depends(get_current_employee)
-):
-    """Update a compliance document (HR Manager/Executive only)"""
-    file_content = await file.read()
-    base64_content = base64.b64encode(file_content).decode('utf-8')
-    
-    document_update = ComplianceDocumentUpdate(
-        title=title,
-        category=category.capitalize(),
-        description=description,
-        uploaded_document=base64_content
-    )
-    
-    return ComplianceService.update_document(
-        db=db,
-        document_id=document_id,
-        document_update=document_update,
-        designation=current_employee["designation"]
-    )
 
 

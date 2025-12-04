@@ -25,6 +25,11 @@ class ComplianceDocumentResponse(ComplianceDocumentBase):
     
     class Config:
         from_attributes = True
+        populate_by_name = True
+        
+    @property
+    def date_posted(self):
+        return self.updated_at
 
 class ComplianceDocumentDownload(ComplianceDocumentResponse):
     uploaded_document: str
