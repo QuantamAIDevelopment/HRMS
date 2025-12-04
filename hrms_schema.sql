@@ -128,10 +128,16 @@ CREATE TABLE attendance (
     attendance_id SERIAL PRIMARY KEY,
     employee_id VARCHAR(50) NOT NULL,
     attendance_date DATE NOT NULL,
+    punch_in TIME,
+    punch_out TIME,
+    work_hours NUMERIC(5,2),
+    status VARCHAR(50),
+    policy_id UUID,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
 
-    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE
+    FOREIGN KEY (employee_id) REFERENCES employees(employee_id) ON DELETE CASCADE,
+    FOREIGN KEY (policy_id) REFERENCES policy_master(id)
 );
 
 CREATE INDEX idx_attendance_emp ON attendance(employee_id);
@@ -308,6 +314,29 @@ CREATE TABLE compliance_documents_and_policy_management (
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW(),
     FOREIGN KEY (uploaded_by) REFERENCES employees(employee_id)
+);
+
+-- ============================================================
+-- 17. POLICY MASTER
+-- ============================================================
+CREATE TABLE policy_master (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(255) UNIQUE NOT NULL,
+    description TEXT,
+    working_hours_per_day FLOAT NOT NULL,
+    working_days_per_week INTEGER NOT NULL,
+    is_active BOOLEAN DEFAULT FALSE,
+    grace_period_minutes INTEGER NOT NULL,
+    mark_late_after_minutes INTEGER NOT NULL,
+    half_day_hours FLOAT NOT NULL,
+    auto_deduct_for_absence BOOLEAN NOT NULL,
+    overtime_enabled BOOLEAN NOT NULL,
+    overtime_multiplier_weekdays FLOAT,
+    overtime_multiplier_weekend FLOAT,
+    require_check_in BOOLEAN NOT NULL,
+    require_check_out BOOLEAN NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================
