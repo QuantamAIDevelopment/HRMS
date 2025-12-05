@@ -1,7 +1,34 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from .api.v1 import employees, departments
+from .core.logging_config import setup_logging
 
-app = FastAPI(title="HRMS Backend")
+# Setup logging
+setup_logging()
+
+app = FastAPI(
+    title="HRMS Backend",
+    description="Human Resource Management System API",
+    version="1.0.0"
+)
+
+# CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure appropriately for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include routers
+app.include_router(employees.router, prefix="/api/v1")
+app.include_router(departments.router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
-    return {"message": "HRMS Backend API"}
+    return {"message": "HRMS Backend API", "version": "1.0.0"}
+
+@app.get("/health")
+def health_check():
+    return {"status": "healthy"}
