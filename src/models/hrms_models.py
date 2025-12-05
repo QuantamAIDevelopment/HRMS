@@ -276,3 +276,15 @@ class PolicyMaster(Base):
     require_check_out = Column(Boolean, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+class EventHoliday(Base):
+    __tablename__ = "events_holidays"
+    
+    id = Column(Integer, primary_key=True)
+    title = Column(String(255))
+    subtitle = Column(String(255))
+    type = Column(String(100))
+    event_date = Column(Date)
+    location = Column(String(255))
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
