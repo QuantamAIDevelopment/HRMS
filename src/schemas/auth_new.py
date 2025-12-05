@@ -5,6 +5,13 @@ class LoginRequest(BaseModel):
     email: EmailStr
     password: str
 
+class SignupRequest(BaseModel):
+    employee_id: str
+    email: EmailStr
+    password: str
+    full_name: str
+    role: str = "EMPLOYEE"
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str

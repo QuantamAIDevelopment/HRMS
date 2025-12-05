@@ -15,7 +15,6 @@ class ExpenseCreate(ExpenseBase):
 
 class ExpenseResponse(ExpenseBase):
     expense_id: int
-    expense_code: Optional[str] = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -26,3 +25,20 @@ class ExpenseResponse(ExpenseBase):
     
     class Config:
         from_attributes = True
+
+class ExpenseStatusResponse(BaseModel):
+    """Response schema for expense status summary"""
+    total_expenses: float = 0
+    pending_review: float = 0
+    approved: float = 0
+    rejected: float = 0
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "Total Expenses": 2444,
+                "Pending Review": 2444,
+                "Approved": 0,
+                "Rejected": 0
+            }
+        }

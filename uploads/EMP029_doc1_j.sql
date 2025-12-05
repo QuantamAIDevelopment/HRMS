@@ -1,0 +1,10 @@
+UPDATE employees SET joining_date = '2025-08-01' WHERE employee_id = 'EMP001';
+UPDATE employees SET joining_date = '2025-08-05' WHERE employee_id = 'EMP002';
+UPDATE employees SET joining_date = '2025-08-10' WHERE employee_id = 'EMP003';
+UPDATE employees SET joining_date = '2025-08-12' WHERE employee_id = 'EMP004';
+UPDATE employees SET joining_date = '2025-08-15' WHERE employee_id = 'EMP005';
+UPDATE employees SET joining_date = '2025-08-18' WHERE employee_id = 'EMP006';
+UPDATE employees SET joining_date = '2025-08-20' WHERE employee_id = 'EMP007';
+UPDATE employees SET joining_date = '2025-08-22' WHERE employee_id = 'EMP008';
+UPDATE employees SET joining_date = '2025-08-25' WHERE employee_id = 'EMP009';
+UPDATE employees SET joining_date = '2025-08-28' WHERE employee_id = 'EMP010';

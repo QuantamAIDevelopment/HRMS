@@ -36,9 +36,9 @@ class ExpenseService:
         return db.query(Expense).filter(Expense.employee_id == employee_id).all()
     
     @staticmethod
-    def update_expense_status(db: Session, expense_code: str, employee_id: str, status: str):
+    def update_expense_status(db: Session, expense_id: str, employee_id: str, status: str):
         expense = db.query(Expense).filter(
-            Expense.expense_code == expense_code,
+            Expense.expense_id == int(expense_id),
             Expense.employee_id == employee_id
         ).first()
         if expense:
@@ -46,3 +46,37 @@ class ExpenseService:
             db.commit()
             db.refresh(expense)
         return expense
+    
+    @staticmethod
+    def get_expense_status_summary(db: Session):
+        """Get overall expense status summary"""
+        expenses = db.query(Expense).all()
+        
+        total_amount = sum(float(e.amount) for e in expenses)
+        pending_amount = sum(float(e.amount) for e in expenses if e.status.upper() == "PENDING")
+        approved_amount = sum(float(e.amount) for e in expenses if e.status.upper() == "APPROVED")
+        rejected_amount = sum(float(e.amount) for e in expenses if e.status.upper() == "REJECTED")
+        
+        return {
+            "Total Expenses": total_amount,
+            "Pending Review": pending_amount,
+            "Approved": approved_amount,
+            "Rejected": rejected_amount
+        }
+    
+    @staticmethod
+    def get_employee_expense_status_summary(db: Session, employee_id: str):
+        """Get expense status summary for specific employee"""
+        expenses = db.query(Expense).filter(Expense.employee_id == employee_id).all()
+        
+        total_amount = sum(float(e.amount) for e in expenses)
+        pending_amount = sum(float(e.amount) for e in expenses if e.status.upper() == "PENDING")
+        approved_amount = sum(float(e.amount) for e in expenses if e.status.upper() == "APPROVED")
+        rejected_amount = sum(float(e.amount) for e in expenses if e.status.upper() == "REJECTED")
+        
+        return {
+            "Total Submitted": total_amount,
+            "Pending Review": pending_amount,
+            "Approved": approved_amount,
+            "Rejected": rejected_amount
+        }

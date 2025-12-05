@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
 from sqlalchemy.orm import Session
 from src.api.deps import get_db
-from src.schemas.expense import ExpenseResponse
+from src.schemas.expense import ExpenseResponse, ExpenseStatusResponse
 from src.services.expense_service import ExpenseService
 from decimal import Decimal
 from datetime import date
@@ -54,12 +54,30 @@ def get_employee_expenses(employee_id: str, db: Session = Depends(get_db)):
 
 @router.put("/employee-expenses/update-status")
 def update_expense_status(
-    expense_code: str = Form(...),
+    expense_id: str = Form(...),
     employee_id: str = Form(...),
     status: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    expense = ExpenseService.update_expense_status(db, expense_code, employee_id, status)
+    expense = ExpenseService.update_expense_status(db, expense_id, employee_id, status)
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     return {"message": f"Expense {status.lower()} successfully", "expense": expense}
+
+
+
+@router.get("/expenses/status")
+def get_expense_status(db: Session = Depends(get_db)):
+    """Get overall expense status summary"""
+    try:
+        return ExpenseService.get_expense_status_summary(db)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching expense status: {str(e)}")
+
+@router.get("/expenses/status/{employee_id}")
+def get_employee_expense_status(employee_id: str, db: Session = Depends(get_db)):
+    """Get expense status summary for specific employee"""
+    try:
+        return ExpenseService.get_employee_expense_status_summary(db, employee_id)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching employee expense status: {str(e)}")

@@ -72,6 +72,26 @@ def send_welcome_email(email: str):
     body = "Welcome to our HRMS system!"
     return send_email(email, subject, body)
 
+def send_user_credentials_email(email: str, password: str):
+    subject = "Your HRMS Account Credentials - Valid for 24 Hours"
+    body = f"""Dear User,
+
+Your HRMS account has been created successfully.
+
+Your login credentials are:
+Mail ID: {email}
+Temporary Password: {password}
+
+IMPORTANT: This temporary password is valid for 24 hours only.
+Please login and change your password within 24 hours.
+
+If you don't change your password within 24 hours, you will need to contact your administrator for a new temporary password.
+
+Best regards,
+HRMS Team"""
+    
+    return send_email(email, subject, body)
+
 def send_payslip_email(email: str):
     subject = "Your Payslip"
     body = "Please find your payslip attached."

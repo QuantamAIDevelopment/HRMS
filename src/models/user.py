@@ -11,9 +11,12 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
     role = Column(String, nullable=False, default="EMPLOYEE")
+    
 
     
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
-   
+    def mark_onboarded(self):
+        """Mark user as onboarded"""
+        pass
