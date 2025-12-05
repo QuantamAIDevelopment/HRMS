@@ -1,0 +1,2 @@
+ALTER TABLE compliance_documents_and_policy_management 
+DROP CONSTRAINT compliance_documents_and_policy_management_uploaded_by_fkey;
