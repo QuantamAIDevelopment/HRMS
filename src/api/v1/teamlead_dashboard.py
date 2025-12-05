@@ -17,7 +17,9 @@ def verify_team_lead_role(employee_id: str, db: Session):
     ), {"emp_id": employee_id})
     
     employee = result.fetchone()
-    if not employee or employee.designation.lower() != "team lead":
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if "team lead" not in employee.designation.lower():
         raise HTTPException(status_code=403, detail="Access denied. Team Lead role required.")
 
 @router.get("/teamlead/dashboard/{employee_id}", response_model=DashboardResponse)

@@ -10,8 +10,24 @@ from ...schemas.dashboard import DashboardResponse
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
+def verify_employee_role(employee_id: str, db: Session):
+    from sqlalchemy import text
+    result = db.execute(text(
+        "SELECT designation FROM employees WHERE employee_id = :emp_id"
+    ), {"emp_id": employee_id})
+    
+    employee = result.fetchone()
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    designation = employee.designation.lower()
+    if any(role in designation for role in ["manager", "team lead", "hr executive"]):
+        raise HTTPException(status_code=403, detail="Access denied. Regular employee role required.")
+
 @router.get("/dashboard/{employee_id}", response_model=DashboardResponse)
 def get_employee_dashboard(employee_id: str, db: Session = Depends(get_db)):
+    verify_employee_role(employee_id, db)
+    
     try:
         logger.info(f"Dashboard request for employee: {employee_id}")
         dashboard_service = DashboardService(db)

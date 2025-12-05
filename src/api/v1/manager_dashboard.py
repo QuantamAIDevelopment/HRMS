@@ -13,7 +13,11 @@ def verify_manager_role(employee_id: str, db: Session):
     ), {"emp_id": employee_id})
     
     employee = result.fetchone()
-    if not employee or "manager" not in employee.designation.lower():
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    
+    designation = employee.designation.lower()
+    if "manager" not in designation or "hr manager" in designation:
         raise HTTPException(status_code=403, detail="Access denied. Manager role required.")
 
 @router.get("/manager/dashboard/{employee_id}", response_model=DashboardResponse)

@@ -13,8 +13,10 @@ def verify_non_employee_role(employee_id: str, db: Session):
     ), {"emp_id": employee_id})
     
     employee = result.fetchone()
-    if not employee or any(role in employee.designation.lower() for role in ["manager", "hr manager", "hr executive", "team lead"]):
-        raise HTTPException(status_code=403, detail="Access denied. Non-employee role required.")
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if any(role in employee.designation.lower() for role in ["manager", "hr manager", "hr executive", "team lead"]):
+        raise HTTPException(status_code=403, detail="Access denied. Regular employee role required.")
 
 @router.get("/non-employee/dashboard/{employee_id}", response_model=DashboardResponse)
 def get_non_employee_dashboard(employee_id: str, db: Session = Depends(get_db)):

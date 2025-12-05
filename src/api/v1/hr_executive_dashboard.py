@@ -13,7 +13,9 @@ def verify_hr_executive_role(employee_id: str, db: Session):
     ), {"emp_id": employee_id})
     
     employee = result.fetchone()
-    if not employee or "hr executive" not in employee.designation.lower():
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+    if "hr executive" not in employee.designation.lower():
         raise HTTPException(status_code=403, detail="Access denied. HR Executive role required.")
 
 @router.get("/hr-executive/dashboard/{employee_id}", response_model=DashboardResponse)
