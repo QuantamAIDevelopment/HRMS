@@ -5,7 +5,7 @@ from typing import List, Optional
 import base64
 import io
 from ...models.session import get_db
-from ...models.hrms_models import ComplianceDocument
+from ...models import ComplianceDocument
 from ...schemas.compliance_document import (
     ComplianceDocumentCreate,
     ComplianceDocumentUpdate,
