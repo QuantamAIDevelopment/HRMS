@@ -1,7 +1,7 @@
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
-    database_url: str = "sqlite:///./hrms.db"
+    database_url: str
     secret_key: str = "your-secret-key"
     
     class Config:
