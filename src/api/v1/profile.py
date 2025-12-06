@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from ...models.session import get_db
 from ...models.employee_profile import Department, ShiftMaster
 
-router = APIRouter(prefix="/profiles", tags=["profiles"])
+router = APIRouter()
 
 @router.get("/departments")
 def get_departments(db: Session = Depends(get_db)):

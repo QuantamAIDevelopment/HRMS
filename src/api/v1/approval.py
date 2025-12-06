@@ -1,259 +1,123 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from sqlalchemy import text
+from typing import List
+
 from ...models.session import get_db
-from ...models.employee_profile import ProfileEditRequest, Employee, EmployeePersonalDetails, BankDetails, Asset, EmployeeWorkExperience, EmployeeDocument, Department, ShiftMaster
-from ...schemas.profile import ProfileEditRequestResponse
+from ...models.employee_profile import ProfileEditRequest
 
-router = APIRouter(prefix="/approvals", tags=["approvals"])
+router = APIRouter()
 
-@router.get("/requests")
-def get_all_requests(db: Session = Depends(get_db)):
-    """Get all profile edit requests"""
+@router.get("/profile-requests")
+@router.get("/approval/profile-requests")
+def get_all_profile_requests(db: Session = Depends(get_db)):
     requests = db.query(ProfileEditRequest).all()
-    return {
-        "total_requests": len(requests),
-        "pending_requests": len([r for r in requests if r.status == "pending"]),
-        "approved_requests": len([r for r in requests if r.status.upper() == "APPROVED"]),
-        "rejected_requests": len([r for r in requests if r.status == "rejected"]),
-        "requests": requests
-    }
+    return requests
 
 @router.get("/cards")
-def get_cards_data(db: Session = Depends(get_db)):
-    """Get all card counts in one endpoint"""
-    total = db.query(ProfileEditRequest).count()
-    pending = db.query(ProfileEditRequest).filter(ProfileEditRequest.status == "pending").count()
-    approved = db.query(ProfileEditRequest).filter(ProfileEditRequest.status == "APPROVED").count()
-    rejected = db.query(ProfileEditRequest).filter(ProfileEditRequest.status == "rejected").count()
-    
+@router.get("/approval/cards")
+def get_approval_cards(db: Session = Depends(get_db)):
+    query = text("""
+        SELECT 
+            COUNT(*) as total_requests,
+            COUNT(CASE WHEN UPPER(status) = 'PENDING' THEN 1 END) as pending,
+            COUNT(CASE WHEN UPPER(status) = 'APPROVED' THEN 1 END) as approved,
+            COUNT(CASE WHEN UPPER(status) = 'REJECTED' THEN 1 END) as rejected
+        FROM profile_edit_requests
+    """)
+    result = db.execute(query).fetchone()
     return {
-        "total": {"count": total, "title": "Total Requests"},
-        "pending": {"count": pending, "title": "Pending Requests"},
-        "approved": {"count": approved, "title": "Approved Requests"},
-        "rejected": {"count": rejected, "title": "Rejected Requests"}
+        "total_requests": result.total_requests or 0,
+        "pending": result.pending or 0,
+        "approved": result.approved or 0,
+        "rejected": result.rejected or 0
     }
 
-@router.put("/update-status/{employee_id}")
-def update_request_status(employee_id: str, status: str, manager_comments: str = None, db: Session = Depends(get_db)):
-    """Update request status by employee ID"""
-    
-    # Get latest pending request for employee
-    request = db.query(ProfileEditRequest).filter(
+@router.put("/employee/{employee_id}")
+@router.put("/approval/employee/{employee_id}")
+def update_employee_requests(employee_id: str, status: str = Query(...), comments: str = Query(None), db: Session = Depends(get_db)):
+    edit_requests = db.query(ProfileEditRequest).filter(
         ProfileEditRequest.employee_id == employee_id,
         ProfileEditRequest.status == "pending"
-    ).order_by(ProfileEditRequest.created_at.desc()).first()
+    ).all()
     
-    if not request:
-        raise HTTPException(status_code=404, detail="No pending request found for employee")
+    if not edit_requests:
+        return {"message": f"No pending requests found for employee {employee_id}"}
     
-    # If approving, apply the changes
-    if status.upper() == "APPROVED":
-        employee = db.query(Employee).filter(Employee.employee_id == request.employee_id).first()
+    processed_count = 0
+    
+    for edit_request in edit_requests:
+        edit_request.status = status.upper()
+        if comments:
+            edit_request.manager_comments = comments
         
-        # Get or create personal details
-        personal_details = db.query(EmployeePersonalDetails).filter(
-            EmployeePersonalDetails.employee_id == request.employee_id
-        ).first()
-        if not personal_details:
-            personal_details = EmployeePersonalDetails(employee_id=request.employee_id)
-            db.add(personal_details)
-        
-        # Get or create bank details
-        bank_details = db.query(BankDetails).filter(
-            BankDetails.employee_id == request.employee_id
-        ).first()
-        if not bank_details:
-            bank_details = BankDetails(employee_id=request.employee_id, account_holder_name="Default", ifsc_code="DEFAULT", bank_name="Default Bank")
-            db.add(bank_details)
-        
-        # Apply changes based on requested_changes text
-        changes = request.requested_changes.lower()
-        
-        # Employee table fields
-        if "first name" in changes:
-            employee.first_name = request.new_value
-        if "last name" in changes:
-            employee.last_name = request.new_value
-        if "designation" in changes or "job title" in changes:
-            employee.designation = request.new_value
-        if "email" in changes:
-            employee.email_id = request.new_value
-        if "phone" in changes:
-            employee.phone_number = request.new_value
-        if "location" in changes:
-            employee.location = request.new_value
-        if "department" in changes:
-            try:
-                employee.department_id = int(request.new_value)
-            except:
-                pass
-        if "shift" in changes:
-            try:
-                employee.shift_id = int(request.new_value)
-            except:
-                pass
-        if "joining" in changes or "hire" in changes:
-            employee.joining_date = request.new_value
-        if "manager" in changes or "reporting" in changes:
-            employee.reporting_manager = request.new_value
-        
-        # Personal details fields
-        if "marital" in changes:
-            personal_details.marital_status = request.new_value
-        if "gender" in changes:
-            personal_details.gender = request.new_value
-        if "birth" in changes or "dob" in changes:
-            personal_details.date_of_birth = request.new_value
-        if "blood" in changes:
-            personal_details.blood_group = request.new_value
-        if "nationality" in changes:
-            personal_details.nationality = request.new_value
-        if "address" in changes:
-            personal_details.employee_address = request.new_value
-        if "emergency" in changes:
-            if "name" in changes:
-                personal_details.emergency_full_name = request.new_value
-            elif "phone" in changes:
-                personal_details.emergency_primary_phone = request.new_value
-            elif "relationship" in changes:
-                personal_details.emergency_relationship = request.new_value
-        
-        # Bank details fields
-        if "account number" in changes:
-            bank_details.account_number = request.new_value[:30]
-        if "bank name" in changes:
-            bank_details.bank_name = request.new_value[:100]
-        if "ifsc" in changes:
-            bank_details.ifsc_code = request.new_value[:20]
-        if "account holder" in changes:
-            bank_details.account_holder_name = request.new_value[:50]
-        if "branch" in changes:
-            bank_details.branch = request.new_value[:150]
-        if "account type" in changes:
-            bank_details.account_type = request.new_value[:20]
-        if "pan" in changes:
-            bank_details.pan_number = request.new_value[:15]
-        if "aadhaar" in changes:
-            bank_details.aadhaar_number = request.new_value[:20]
-        
-        # Work experience updates
-        if "experience" in changes or "company" in changes or "job title" in changes:
-            if "job title" in changes:
-                # Update existing work experience job title
-                work_experiences = db.query(EmployeeWorkExperience).filter(
-                    EmployeeWorkExperience.employee_id == request.employee_id
-                ).all()
-                if work_experiences:
-                    work_experiences[0].job_title = request.new_value
+        if status.upper() == "APPROVED":
+            field_name = edit_request.requested_changes.strip().lower()
+            new_value = edit_request.new_value
+            
+            if field_name in ["first_name", "last_name", "email_id", "phone_number", "designation", "location", "reporting_manager", "profile_photo"]:
+                query = text(f"UPDATE employees SET {field_name} = :new_value WHERE employee_id = :employee_id")
+                db.execute(query, {"new_value": new_value, "employee_id": employee_id})
+            elif field_name == "department_id":
+                query = text("UPDATE employees SET department_id = :new_value WHERE employee_id = :employee_id")
+                db.execute(query, {"new_value": int(new_value), "employee_id": employee_id})
+            elif field_name == "shift_id":
+                query = text("UPDATE employees SET shift_id = :new_value WHERE employee_id = :employee_id")
+                db.execute(query, {"new_value": int(new_value), "employee_id": employee_id})
+            elif field_name == "joining_date":
+                from datetime import datetime
+                query = text("UPDATE employees SET joining_date = :new_value WHERE employee_id = :employee_id")
+                db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
+            elif field_name in ["experience_designation", "company_name", "start_date", "end_date", "description"]:
+                check_query = text("SELECT experience_id FROM employee_work_experience WHERE employee_id = :employee_id ORDER BY created_at DESC LIMIT 1")
+                exists = db.execute(check_query, {"employee_id": employee_id}).fetchone()
+                if exists:
+                    query = text(f"UPDATE employee_work_experience SET {field_name} = :new_value WHERE employee_id = :employee_id")
+                    if field_name in ["start_date", "end_date"]:
+                        from datetime import datetime
+                        db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
+                    else:
+                        db.execute(query, {"new_value": new_value, "employee_id": employee_id})
                 else:
-                    # Create new work experience if none exists
-                    work_exp = EmployeeWorkExperience(
-                        employee_id=request.employee_id,
-                        job_title=request.new_value,
-                        company_name="Current Company",
-                        start_date="2024-01-01"
-                    )
-                    db.add(work_exp)
-            elif "company" in changes:
-                work_experiences = db.query(EmployeeWorkExperience).filter(
-                    EmployeeWorkExperience.employee_id == request.employee_id
-                ).all()
-                if work_experiences:
-                    work_experiences[0].company_name = request.new_value
-        
-        # Asset updates
-        if "asset" in changes:
-            if "assign" in changes:
-                # Find asset by name or serial number and assign to employee
-                asset = db.query(Asset).filter(
-                    (Asset.asset_name == request.new_value) | 
-                    (Asset.serial_number == request.new_value)
-                ).first()
-                if asset:
-                    asset.assigned_employee_id = request.employee_id
-                    asset.status = "Assigned"
-            elif "unassign" in changes or "remove" in changes:
-                # Unassign specific asset or all assets from employee
-                if request.new_value:
-                    asset = db.query(Asset).filter(
-                        Asset.assigned_employee_id == request.employee_id,
-                        (Asset.asset_name == request.new_value) | 
-                        (Asset.serial_number == request.new_value)
-                    ).first()
-                    if asset:
-                        asset.assigned_employee_id = None
-                        asset.status = "Available"
+                    if field_name == "experience_designation":
+                        query = text("INSERT INTO employee_work_experience (employee_id, experience_designation, company_name, start_date) VALUES (:employee_id, :new_value, 'To be updated', CURRENT_DATE)")
+                    elif field_name == "company_name":
+                        query = text("INSERT INTO employee_work_experience (employee_id, experience_designation, company_name, start_date) VALUES (:employee_id, 'To be updated', :new_value, CURRENT_DATE)")
+                    else:
+                        query = text(f"INSERT INTO employee_work_experience (employee_id, experience_designation, company_name, start_date, {field_name}) VALUES (:employee_id, 'To be updated', 'To be updated', CURRENT_DATE, :new_value)")
+                    if field_name in ["start_date", "end_date"]:
+                        from datetime import datetime
+                        db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
+                    else:
+                        db.execute(query, {"new_value": new_value, "employee_id": employee_id})
+            elif field_name in ["serial_number", "asset_name", "asset_type", "condition", "purchase_date", "value"]:
+                query = text(f"UPDATE assets SET {field_name} = :new_value WHERE assigned_employee_id = :employee_id")
+                if field_name == "purchase_date":
+                    from datetime import datetime
+                    db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
+                elif field_name == "value":
+                    db.execute(query, {"new_value": float(new_value), "employee_id": employee_id})
                 else:
-                    # Unassign all assets
-                    assets = db.query(Asset).filter(
-                        Asset.assigned_employee_id == request.employee_id
-                    ).all()
-                    for asset in assets:
-                        asset.assigned_employee_id = None
-                        asset.status = "Available"
-            elif "status" in changes:
-                # Update asset status
-                assets = db.query(Asset).filter(
-                    Asset.assigned_employee_id == request.employee_id
-                ).all()
-                for asset in assets:
-                    asset.status = request.new_value
+                    db.execute(query, {"new_value": new_value, "employee_id": employee_id})
+            elif field_name in ["date_of_birth", "gender", "marital_status", "blood_group", "nationality", "employee_email", "employee_phone", "employee_alternate_phone", "employee_address", "emergency_full_name", "emergency_relationship", "emergency_primary_phone", "emergency_alternate_phone", "emergency_address"]:
+                query = text(f"UPDATE employee_personal_details SET {field_name} = :new_value WHERE employee_id = :employee_id")
+                if field_name == "date_of_birth":
+                    from datetime import datetime
+                    db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
+                else:
+                    db.execute(query, {"new_value": new_value, "employee_id": employee_id})
+            elif field_name in ["account_number", "account_holder_name", "ifsc_code", "bank_name", "branch", "account_type", "pan_number", "aadhaar_number"]:
+                query = text(f"UPDATE bank_details SET {field_name} = :new_value WHERE employee_id = :employee_id")
+                db.execute(query, {"new_value": new_value, "employee_id": employee_id})
+            elif field_name in ["file_name", "category", "upload_date"]:
+                query = text(f"UPDATE employee_documents SET {field_name} = :new_value WHERE employee_id = :employee_id")
+                if field_name == "upload_date":
+                    from datetime import datetime
+                    db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
+                else:
+                    db.execute(query, {"new_value": new_value, "employee_id": employee_id})
         
-        # Document updates - simplified approach
-        if "document" in changes:
-            if request.old_value:  # Update specific document
-                document = db.query(EmployeeDocument).filter(
-                    EmployeeDocument.employee_id == request.employee_id,
-                    EmployeeDocument.document_name == request.old_value
-                ).first()
-                if document:
-                    document.status = request.new_value
-            else:  # Update all documents for employee
-                documents = db.query(EmployeeDocument).filter(
-                    EmployeeDocument.employee_id == request.employee_id
-                ).all()
-                for doc in documents:
-                    doc.status = request.new_value
+        processed_count += 1
     
-    # Update request status
-    request.status = status.upper()
-    if manager_comments:
-        request.manager_comments = manager_comments
-    
-    # Commit all changes
     db.commit()
-    
-    # Force flush to ensure changes are written to database
-    db.flush()
-    
-    # Refresh all objects to ensure changes are reflected
-    if status.upper() == "APPROVED":
-        db.refresh(employee)
-        if personal_details:
-            db.refresh(personal_details)
-        if bank_details:
-            db.refresh(bank_details)
-        
-        # Refresh work experience and assets
-        work_experiences = db.query(EmployeeWorkExperience).filter(
-            EmployeeWorkExperience.employee_id == request.employee_id
-        ).all()
-        for we in work_experiences:
-            db.refresh(we)
-        
-        assets = db.query(Asset).filter(
-            Asset.assigned_employee_id == request.employee_id
-        ).all()
-        for asset in assets:
-            db.refresh(asset)
-        
-        documents = db.query(EmployeeDocument).filter(
-            EmployeeDocument.employee_id == request.employee_id
-        ).all()
-        for doc in documents:
-            db.refresh(doc)
-        
-        # Final commit to ensure all changes are persisted
-        db.commit()
-    
-    return {"message": f"Request status updated to {status} and profile updated"}
+    return {"message": f"Updated {processed_count} requests to {status.upper()}"}

@@ -12,7 +12,9 @@ class Timesheet(Base):
     project = Column(String(150))
     task_description = Column(Text)
     hours = Column(Numeric(5, 2))
-    status = Column(String(50), default="PENDING")
+    status = Column(String(50), default="PENDING_MANAGER_APPROVAL")
+    approver_id = Column(String(50))
+    approver_type = Column(String(20))  # MANAGER, HR_MANAGER, HR_EXECUTIVE
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
     

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
+from sqlalchemy import text
 from typing import List
 from datetime import date
 
@@ -9,13 +10,69 @@ from ...models.timesheet import Timesheet
 from ...schemas.timesheet import TimesheetCreate, TimesheetResponse, TimesheetUpdate
 from ...schemas.timesheet_status import TimesheetStatusUpdate
 
-router = APIRouter(prefix="/timesheets", tags=["timesheets"])
+router = APIRouter()
 
 @router.post("/", response_model=TimesheetResponse, status_code=status.HTTP_201_CREATED)
 def create_timesheet(timesheet: TimesheetCreate, db: Session = Depends(get_db)):
+    # Check if employee exists
+    employee_exists = db.execute(
+        text("SELECT employee_id FROM employees WHERE employee_id = :emp_id"),
+        {"emp_id": timesheet.employee_id}
+    ).fetchone()
+    
+    if not employee_exists:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Employee {timesheet.employee_id} not found"
+        )
+    
+    # Check if employee has approved leave for this date
+    leave_check = db.execute(
+        text("""
+            SELECT COUNT(*) as count FROM leave_management 
+            WHERE employee_id = :emp_id 
+            AND :entry_date BETWEEN start_date AND end_date 
+            AND UPPER(status) = 'APPROVED'
+        """),
+        {"emp_id": timesheet.employee_id, "entry_date": timesheet.entry_date}
+    ).fetchone()
+    
+    if leave_check and leave_check.count > 0:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            status_code=200,
+            content={
+                "success": False,
+                "message": "Cannot create timesheet for approved leave date",
+                "blocked": True
+            }
+        )
+    
+    # Get employee's reporting manager
+    manager_query = db.execute(
+        text("SELECT reporting_manager FROM employees WHERE employee_id = :emp_id"),
+        {"emp_id": timesheet.employee_id}
+    ).fetchone()
+    
+    # Check if employee is a manager (has direct reports)
+    is_manager = db.execute(
+        text("SELECT COUNT(*) as count FROM employees WHERE reporting_manager = :emp_id"),
+        {"emp_id": timesheet.employee_id}
+    ).fetchone().count > 0
+    
     timesheet_data = timesheet.dict(exclude_unset=True)
-    timesheet_data["status"] = "PENDING"
     timesheet_data["time_entry_id"] = Timesheet.generate_time_entry_id(db)
+    
+    if is_manager:
+        # Manager's timesheet goes to HR
+        timesheet_data["status"] = "PENDING_HR_APPROVAL"
+        timesheet_data["approver_type"] = "HR_MANAGER"
+    else:
+        # Employee/TeamLead timesheet goes to manager
+        timesheet_data["status"] = "PENDING_MANAGER_APPROVAL"
+        timesheet_data["approver_id"] = manager_query.reporting_manager if manager_query else None
+        timesheet_data["approver_type"] = "MANAGER"
+    
     db_timesheet = Timesheet(**timesheet_data)
     db.add(db_timesheet)
     db.commit()
@@ -27,10 +84,54 @@ def get_timesheets(db: Session = Depends(get_db)):
     timesheets = db.query(Timesheet).all()
     return timesheets
 
-@router.get("/{employee_id}", response_model=List[TimesheetResponse])
-def get_timesheet(employee_id: str, db: Session = Depends(get_db)):
-    timesheets = db.query(Timesheet).filter(Timesheet.employee_id == employee_id).all()
-    return timesheets
+@router.get("/cards")
+def get_timesheet_cards(db: Session = Depends(get_db)):
+    """Get timesheet analytics cards"""
+    query = text("""
+        SELECT 
+            SUM(hours) as total_hours,
+            COUNT(DISTINCT id) as tasks_logged,
+            COUNT(DISTINCT project) as active_projects
+        FROM time_entries
+        WHERE status IN ('APPROVED', 'PENDING_MANAGER_APPROVAL', 'PENDING_HR_APPROVAL')
+    """)
+    result = db.execute(query).fetchone()
+    return {
+        "total_hours": float(result.total_hours) if result.total_hours else 0,
+        "tasks_logged": result.tasks_logged or 0,
+        "active_projects": result.active_projects or 0
+    }
+
+
+@router.put("/edit/{employee_id}", response_model=TimesheetResponse, status_code=status.HTTP_200_OK)
+def edit_timesheet(employee_id: str, timesheet_update: TimesheetUpdate, entry_date: str = Query(...), db: Session = Depends(get_db)):
+    """Edit timesheet entry by employee ID and entry date"""
+    try:
+        from datetime import datetime
+        entry_date_obj = datetime.strptime(entry_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+    
+    timesheet = db.query(Timesheet).filter(
+        Timesheet.employee_id == employee_id,
+        Timesheet.entry_date == entry_date_obj
+    ).first()
+    
+    if not timesheet:
+        raise HTTPException(status_code=404, detail="Timesheet not found")
+    
+    # Update fields (exclude employee_id and entry_date to prevent violations)
+    update_data = timesheet_update.dict(exclude_unset=True)
+    update_data.pop('employee_id', None)
+    update_data.pop('entry_date', None)
+    update_data.pop('time_entry_id', None)
+    
+    for field, value in update_data.items():
+        setattr(timesheet, field, value)
+    
+    db.commit()
+    db.refresh(timesheet)
+    return timesheet
 
 @router.put("/{employee_id}", response_model=TimesheetResponse)
 def update_timesheet_status(employee_id: str, status_update: TimesheetStatusUpdate, db: Session = Depends(get_db)):
@@ -45,12 +146,3 @@ def update_timesheet_status(employee_id: str, status_update: TimesheetStatusUpda
     db.refresh(timesheet)
     return timesheet
 
-@router.delete("/{employee_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_timesheet(employee_id: str, db: Session = Depends(get_db)):
-    timesheets = db.query(Timesheet).filter(Timesheet.employee_id == employee_id).all()
-    if not timesheets:
-        raise HTTPException(status_code=404, detail="No timesheets found for employee")
-    
-    for timesheet in timesheets:
-        db.delete(timesheet)
-    db.commit()
