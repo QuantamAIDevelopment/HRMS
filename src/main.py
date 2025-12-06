@@ -15,13 +15,10 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 from api.v1.auth import router as auth_router
-from api.v1.users import router as users_router
-from api.v1.employees import router as employees_router
-from api.v1.onboarding_simple import router as onboarding_router
 from api.v1.expenses import router as expense_router
 from api.v1.salary import router as salary_router
-from api.v1.complete_employee import router as complete_employee_router
 from api.v1.file_upload import router as file_upload_router
+from api.v1.complete_employee import router as complete_employee_router
 
 
 app = FastAPI(
@@ -78,13 +75,10 @@ app.add_middleware(
 
 # Include all routers
 app.include_router(auth_router, prefix="/api/v1/auth")
-app.include_router(users_router, prefix="/api/v1", tags=["users"])
-app.include_router(employees_router, prefix="/api/v1", tags=["employees"])
-app.include_router(onboarding_router, prefix="/api/v1", tags=["onboarding"])
-app.include_router(complete_employee_router, prefix="/api/v1", tags=["complete-employee"])
 app.include_router(expense_router, prefix="/api/v1", tags=["expenses"])
 app.include_router(salary_router, prefix="/api/v1", tags=["salary"])
 app.include_router(file_upload_router, prefix="/api/v1", tags=["file-upload"])
+app.include_router(complete_employee_router, prefix="/api/v1", tags=["complete-employee"])
 
 
 @app.get("/", tags=["Root"])

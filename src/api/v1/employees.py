@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
 from models.session import get_db
 from models.Employee_models import Employee
-from models.payroll_setup import PayrollSetup
 from models.user import User
 from core.security import get_password_hash
 
@@ -124,9 +123,6 @@ def get_employee_all_details(employee_id: str, db: Session = Depends(get_db)):
     if not employee:
         raise HTTPException(status_code=404, detail="Employee not found")
     
-    # Get payroll data
-    payroll = db.query(PayrollSetup).filter(PayrollSetup.employee_id == employee_id).first()
-    
     return {
         "employee_id": employee.employee_id,
         "first_name": employee.first_name,
@@ -146,8 +142,7 @@ def get_employee_all_details(employee_id: str, db: Session = Depends(get_db)):
         "assets": [asset.__dict__ for asset in employee.assets],
         "education": [edu.__dict__ for edu in employee.education],
         "work_experience": [exp.__dict__ for exp in employee.work_experience],
-        "documents": [doc.__dict__ for doc in employee.documents],
-        "payroll": payroll.__dict__ if payroll else None
+        "documents": [doc.__dict__ for doc in employee.documents]
     }
 
 @router.post("/employees/{employee_id}/{first_name}/{last_name}/{email_id}/{phone_number}")
