@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, DateTime, Numeric, Date, Text
 from sqlalchemy.sql import func
-from src.models.base import Base
+from models.base import Base
 from datetime import datetime
 
 class Expense(Base):

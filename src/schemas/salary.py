@@ -64,11 +64,22 @@ class PayrollSetupUpdate(BaseModel):
     provident_fund_percentage: Optional[Decimal] = None
     professional_tax: Optional[Decimal] = None
 
+class ComponentItem(BaseModel):
+    component_name: str = Field(alias="Component_name")
+    amount: float
+    component_type: str = Field(alias="Component_type")
+    
+    class Config:
+        populate_by_name = True
+
 class SalaryComponentUpdate(BaseModel):
     employee_id: str
-    month: str
-    earnings: Optional[List[dict]] = []
-    deductions: Optional[List[dict]] = []
+    month: str = Field(alias="pay_month")
+    earnings: List[ComponentItem] = []
+    deductions: List[ComponentItem] = []
+    
+    class Config:
+        populate_by_name = True
 
 class ComponentDelete(BaseModel):
     employee_id: str

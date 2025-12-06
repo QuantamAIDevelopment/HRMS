@@ -1,3 +1,7 @@
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from fastapi import FastAPI, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer
@@ -10,36 +14,51 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from src.api.v1.auth import router as auth_router
-# from src.api.v1.users import router as users_router
-# from src.api.v1.employees import router as employees_router
-# from src.api.v1.onboarding_simple import router as onboarding_router
+from api.v1.auth import router as auth_router
+# from api.v1.users import router as users_router
+# from api.v1.employees import router as employees_router
+# from api.v1.onboarding_simple import router as onboarding_router
 
-from src.api.v1.expenses import router as expense_router
-from src.api.v1.salary import router as salary_router
-# from src.api.v1.complete_onboarding import router as complete_onboarding_router
-from src.api.v1.complete_employee import router as complete_employee_router
-from src.api.v1.file_upload import router as file_upload_router
+from api.v1.expenses import router as expense_router
+from api.v1.salary import router as salary_router
+# from api.v1.complete_onboarding import router as complete_onboarding_router
+from api.v1.complete_employee import router as complete_employee_router
+from api.v1.file_upload import router as file_upload_router
 # from debug_employees import router as debug_router
 
 
 app = FastAPI(
     title="HRMS Backend API",
     version="1.0.0",
-    description="Human Resource Management System - Complete Employee Onboarding"
+    description="Human Resource Management System - Complete Employee Onboarding",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 # Add custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    logger.error(f"Validation error on {request.url}: {exc.errors()}")
-    logger.error(f"Request body: {await request.body()}")
+    errors = exc.errors()
+    logger.error(f"Validation error on {request.url}: {errors}")
+    
+    if any(e.get("type") == "json_invalid" for e in errors):
+        error_msg = errors[0].get("ctx", {}).get("error", "JSON decode error")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": "Invalid JSON format in request body",
+                "error": error_msg,
+                "hint": "Check line 7 around character 76 - likely missing comma between fields"
+            }
+        )
+    
     return JSONResponse(
         status_code=422,
         content={
-            "detail": exc.errors(),
+            "detail": errors,
             "message": "Validation failed",
-            "missing_fields": [error["loc"][-1] for error in exc.errors() if error["type"] == "missing"]
+            "missing_fields": [error["loc"][-1] for error in errors if error["type"] == "missing"]
         }
     )
 

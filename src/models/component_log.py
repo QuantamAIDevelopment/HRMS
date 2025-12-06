@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, DateTime, Numeric, Text
 from sqlalchemy.sql import func
-from src.models.base import Base
+from models.base import Base
 
 class ComponentUpdateLog(Base):
     __tablename__ = "component_update_logs"

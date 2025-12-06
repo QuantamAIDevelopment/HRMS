@@ -2,22 +2,22 @@ from fastapi import APIRouter, Depends, HTTPException, status, Form, File, Uploa
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from src.core.deps import get_db
+from core.deps import get_db
 import logging
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-from src.models.Employee_models import (
+from models.Employee_models import (
     Employee, EmployeePersonalDetails, BankDetails, 
     EducationalQualifications, EmployeeDocuments, 
     EmployeeWorkExperience, Assets
 )
-from src.models.user import User
+from models.user import User
 
-from src.schemas.employee_complete_new import CompleteEmployeeCreateResponse
-from src.core.security import get_password_hash
-from src.services.email_service import send_user_credentials_email
+from schemas.employee_complete_new import CompleteEmployeeCreateResponse
+from core.security import get_password_hash
+from services.email_service import send_user_credentials_email
 from datetime import datetime, timedelta
 from typing import Optional, List, Union
 import secrets
@@ -33,7 +33,7 @@ router = APIRouter()
 
 @router.get("/all-records")
 def get_all_onboarding_records(db: Session = Depends(get_db)):
-    from src.models.Employee_models import Department
+    from models.Employee_models import Department
     
     # Join Employee with Department to get department names
     employees = db.query(Employee, Department.department_name).outerjoin(
@@ -312,22 +312,15 @@ async def create_complete_employee(
                     if (files and i < len(files) and files[i] and 
                         files[i].filename and files[i].filename.strip()):
                         
-                        # Save uploaded file (supports images: jpg, png, pdf, etc.)
-                        upload_dir = "uploads"
-                        os.makedirs(upload_dir, exist_ok=True)
-                        
-                        # Clean filename and create safe path
-                        safe_filename = files[i].filename.replace(" ", "_")
-                        file_path = os.path.join(upload_dir, f"{employee_id}_{document_name[i].strip()}_{safe_filename}")
-                        
-                        with open(file_path, "wb") as buffer:
-                            content = await files[i].read()
-                            buffer.write(content)
+                        import base64
+                        content = await files[i].read()
+                        file_base64 = base64.b64encode(content).decode('utf-8')
                         
                         doc_list.append({
                             "document_name": document_name[i].strip(),
                             "category": category[i].strip(),
-                            "file_name": safe_filename
+                            "file_name": files[i].filename,
+                            "file_data": file_base64
                         })
                     else:
                         # Add document entry without file (empty value sent)
@@ -370,7 +363,7 @@ async def create_complete_employee(
         #     )
 
         # Find or create department
-        from src.models.Employee_models import ShiftMaster, Department
+        from models.Employee_models import ShiftMaster, Department
         department = db.query(Department).filter(Department.department_name == department_name).first()
         if not department:
             department = Department(department_name=department_name)
@@ -482,6 +475,7 @@ async def create_complete_employee(
                 document_name=doc.get("document_name"),
                 category=doc.get("category"),
                 file_name=file_name,
+                file_data=doc.get("file_data"),
                 upload_date=datetime.now().date(),
                 status="Uploaded" if file_name and file_name != "No file uploaded" else "Pending"
             )
@@ -525,7 +519,7 @@ async def create_complete_employee(
         email_sent = False
         try:
             # Create custom email body with official email and temp password
-            from src.services.email_service import send_email
+            from services.email_service import send_email
             subject = "Welcome to Company - Your Login Credentials"
             body = f"""Dear {first_name} {last_name},
 

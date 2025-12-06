@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.core.deps import get_db
-from src.models.temp_credentials import TempCredentials
-from src.schemas.onboarding_email import OnboardingEmailRequest, OnboardingEmailResponse
-from src.services.onboarding_email_service import generate_temp_password, send_onboarding_email
+from core.deps import get_db
+from models.temp_credentials import TempCredentials
+from schemas.onboarding_email import OnboardingEmailRequest, OnboardingEmailResponse
+from services.onboarding_email_service import generate_temp_password, send_onboarding_email
 from datetime import datetime, timedelta
 
 router = APIRouter()

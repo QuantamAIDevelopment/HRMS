@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
-from src.models.session import get_db
-from src.models.Employee_models import Employee
-from src.models.employee_personal import EmployeePersonal
-from src.models.education import EducationalQualification
-from src.models.bank_details import BankDetails
-from src.models.assets import Asset
+from models.session import get_db
+from models.Employee_models import Employee
+from models.employee_personal import EmployeePersonal
+from models.education import EducationalQualification
+from models.bank_details import BankDetails
+from models.assets import Asset
 from datetime import datetime
 from typing import Optional
 from decimal import Decimal
@@ -82,7 +82,7 @@ def create_employment_information(
     description: Optional[str] = Form(None),
     db: Session = Depends(get_db)
 ):
-    from src.models.Employee_models import EmployeeWorkExperience
+    from models.Employee_models import EmployeeWorkExperience
     
     # Convert string fields to appropriate types with null checks
     dept_id = int(department_id) if department_id else None

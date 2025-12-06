@@ -1,15 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
 from sqlalchemy.orm import Session
-from src.schemas.auth_new import (
+from schemas.auth_new import (
     LoginRequest, SignupRequest, ChangePasswordRequest, ForgotPasswordRequest,
     VerifyOtpRequest, ResetPasswordRequest, ResendOtpRequest,
     TokenResponse, MessageResponse, LoginResponse
 )
-from src.core.security import create_access_token, verify_password, get_current_user_email, verify_token
-from src.models.user import User
-from src.api.deps import get_current_user, get_db
-from src.config.constants import ACCESS_TOKEN_EXPIRE_MINUTES
-from src.services.token_service import TokenService
+from core.security import create_access_token, verify_password, get_current_user_email, verify_token
+from models.user import User
+from api.deps import get_current_user, get_db
+from config.constants import ACCESS_TOKEN_EXPIRE_MINUTES
+from services.token_service import TokenService
 from datetime import timedelta
 
 router = APIRouter(tags=["Authentication"])
@@ -112,7 +112,7 @@ async def change_password(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    from src.core.security import get_password_hash, verify_password
+    from core.security import get_password_hash, verify_password
     import json
     
     # Parse request body manually
@@ -201,7 +201,7 @@ def verify_otp(request: VerifyOtpRequest, db: Session = Depends(get_db)):
 
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
-    from src.core.security import get_password_hash
+    from core.security import get_password_hash
     
     if request.new_password != request.confirm_password:
         raise HTTPException(status_code=400, detail="New password and confirm password do not match")

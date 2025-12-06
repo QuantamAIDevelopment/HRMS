@@ -3,7 +3,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from src.config.constants import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
+from config.constants import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
 import random
 import string
 

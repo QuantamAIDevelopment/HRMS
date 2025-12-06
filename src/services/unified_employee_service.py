@@ -1,9 +1,9 @@
 from sqlalchemy.orm import Session
-from src.models.Employee_models import (
+from models.Employee_models import (
     Employee, EmployeePersonalDetails, BankDetails, 
     Assets, EducationalQualifications, EmployeeDocuments
 )
-from src.schemas.Onboarding_schemas import (
+from schemas.Onboarding_schemas import (
     EmployeeCreate, PersonalDetailsCreate, BankDetailsCreate,
     AssetsCreate, EducationCreate, DocumentsCreate
 )

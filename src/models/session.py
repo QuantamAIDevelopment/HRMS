@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from src.config.constants import DATABASE_URL
+from config.constants import DATABASE_URL
 import logging
 
 logger = logging.getLogger(__name__)

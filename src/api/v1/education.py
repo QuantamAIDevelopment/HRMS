@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.api.deps import get_db, get_current_user
-from src.models.user import User
-from src.models.education import EducationalQualification
-from src.schemas.education import EducationCreate, EducationUpdate, EducationResponse
+from api.deps import get_db, get_current_user
+from models.user import User
+from models.education import EducationalQualification
+from schemas.education import EducationCreate, EducationUpdate, EducationResponse
 from typing import List
 
 router = APIRouter()

@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from src.models.expense import Expense
-from src.schemas.expense import ExpenseCreate
+from models.expense import Expense
+from schemas.expense import ExpenseCreate
 from datetime import datetime
 
 class ExpenseService:

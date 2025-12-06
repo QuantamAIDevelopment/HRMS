@@ -1,3 +1,0 @@
-"expense_id","employee_id","category","description","amount","expense_date","status","created_at","updated_at","expense_code","receipt_url"
-37,"EMP001","FOOD&MEALS","HI","500.00","2025-10-19","APPROVED","2025-11-27 11:18:44.135615","2025-12-02 17:25:27.610784","E37",NULL
-38,"EMP001","FOOD&MEALS","HI","500.00","2025-10-19","Pending","2025-11-27 11:28:15.079373","2025-11-27 11:28:15.079373","E38",NULL

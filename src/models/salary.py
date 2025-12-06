@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, DateTime, Numeric, Text, CheckConstraint, ForeignKey, Index, JSON
 from sqlalchemy.sql import func
-from src.models.base import Base
+from models.base import Base
 
 class PayrollSetup(Base):
     __tablename__ = "payroll_setup"

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.core.deps import get_db
+from core.deps import get_db
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
@@ -49,7 +49,7 @@ def create_employee_json(
     db: Session = Depends(get_db)
 ):
     try:
-        from src.models.Employee_models import Employee, EmployeePersonalDetails, BankDetails
+        from models.Employee_models import Employee, EmployeePersonalDetails, BankDetails
         
         # Create Employee
         employee = Employee(

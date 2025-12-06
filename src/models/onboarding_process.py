@@ -1,6 +1,6 @@
 from sqlalchemy import Column, String, Integer, DateTime, Text
 from sqlalchemy.sql import func
-from src.models.base import Base
+from models.base import Base
 
 class OnboardingProcess(Base):
     __tablename__ = "onboarding_process"

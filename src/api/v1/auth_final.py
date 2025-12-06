@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
-from src.core.security import create_access_token, verify_password, get_password_hash
-from src.models.user import User
-from src.api.deps import get_current_user, get_db
-from src.config.constants import ACCESS_TOKEN_EXPIRE_MINUTES
-from src.services.token_service import TokenService
+from core.security import create_access_token, verify_password, get_password_hash
+from models.user import User
+from api.deps import get_current_user, get_db
+from config.constants import ACCESS_TOKEN_EXPIRE_MINUTES
+from services.token_service import TokenService
 from datetime import timedelta
 
 router = APIRouter(tags=["Authentication"])

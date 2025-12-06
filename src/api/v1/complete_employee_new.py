@@ -1,16 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from src.core.deps import get_db
-from src.models.Employee_models import (
+from core.deps import get_db
+from models.Employee_models import (
     Employee, EmployeePersonalDetails, BankDetails, 
     EducationalQualifications, EmployeeDocuments, 
     EmployeeWorkExperience, Assets
 )
-from src.models.user import User
-from src.schemas.employee_complete_new import CompleteEmployeeCreateRequest, CompleteEmployeeCreateResponse
-from src.core.security import get_password_hash
-from src.services.email_service import send_user_credentials_email
+from models.user import User
+from schemas.employee_complete_new import CompleteEmployeeCreateRequest, CompleteEmployeeCreateResponse
+from core.security import get_password_hash
+from services.email_service import send_user_credentials_email
 from datetime import datetime, timedelta
 import secrets
 import string

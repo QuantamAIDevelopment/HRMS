@@ -4,7 +4,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from src.models.base import Base
+from models.base import Base
 
 # ============================================================
 # 3. EMPLOYEES (MASTER TABLE)

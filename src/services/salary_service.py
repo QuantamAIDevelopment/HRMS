@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
-from src.models.salary import PayrollSetup
-from src.models.Employee_models import Employee
-from src.models.component_log import ComponentUpdateLog
-from src.schemas.salary import SalaryCreate, PayrollSetupUpdate, SalaryComponentUpdate, ComponentDelete
+from models.salary import PayrollSetup
+from models.Employee_models import Employee
+
+from schemas.salary import SalaryCreate, PayrollSetupUpdate, SalaryComponentUpdate, ComponentDelete
+from typing import Optional
 from decimal import Decimal
 from fastapi import HTTPException
 
@@ -218,6 +219,7 @@ class SalaryService:
                 "annual_ctc": float(annual_ctc)
             },
             "salary_structure": {
+                "payroll_id": payroll_setup.payroll_id,
                 "basic_salary": float(payroll_setup.basic_salary),
                 "hra": float(payroll_setup.hra),
                 "allowance": float(payroll_setup.allowance),
@@ -313,7 +315,8 @@ class SalaryService:
                     "email": getattr(employee, 'email_id', ''),
                     "designation": getattr(employee, 'designation', ''),
                     "department_id": employee.department_id,
-                    "joining_date": employee.joining_date.isoformat() if hasattr(employee, 'joining_date') and employee.joining_date else None
+                    "joining_date": employee.joining_date.isoformat() if hasattr(employee, 'joining_date') and employee.joining_date else None,
+                    "annual_ctc": float(getattr(employee, 'annual_ctc', 0))
                 },
                 "payslip_details": {
                     "month": getattr(payroll_record, 'month', '') or "",
@@ -487,8 +490,10 @@ class SalaryService:
         
         return {
             "message": "Salary structure saved successfully",
+            "payroll_id": payroll_setup.payroll_id,
             "employee_id": salary_data.employee_id,
             "pay_month": salary_data.pay_month,
+            "annual_ctc": float(annual_ctc),
             "breakdown": {
                 "basic_salary": float(basic_salary),
                 "hra": float(hra),
@@ -506,7 +511,7 @@ class SalaryService:
     
     @staticmethod
     def get_salary_summary(db: Session, employee_id: str):
-        from src.models.Employee_models import Employee
+        from models.Employee_models import Employee
         from datetime import datetime
         
         employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
@@ -553,135 +558,96 @@ class SalaryService:
     
     @staticmethod
     def update_salary_components(db: Session, update_data: SalaryComponentUpdate):
-        """Update salary components by employee_id and month with proper recalculation"""
-        payroll_record = db.query(PayrollSetup).filter(
-            PayrollSetup.employee_id == update_data.employee_id,
-            PayrollSetup.month == update_data.month
-        ).first()
+        """Edit components and recalculate totals"""
+        from sqlalchemy.orm.attributes import flag_modified
         
-        if not payroll_record:
-            raise HTTPException(status_code=404, detail="Payroll record not found")
-        
-        # Get employee for CTC calculation
-        employee = db.query(Employee).filter(Employee.employee_id == update_data.employee_id).first()
-        if not employee:
-            raise HTTPException(status_code=404, detail="Employee not found")
-        
-        annual_ctc = Decimal(employee.annual_ctc)
-        
-        # Process earnings with proper calculation
-        earnings_list = []
-        additional_earnings = Decimal('0')
-        for earning in update_data.earnings:
-            if earning.component_type.lower() == "percentage":
-                calculated_amount = (annual_ctc * Decimal(str(earning.amount)) / 100) / 12
-                additional_earnings += calculated_amount
-                earnings_list.append({
-                    "component_name": earning.component_name,
-                    "amount": float(calculated_amount),
-                    "component_type": earning.component_type,
-                    "original_percentage": float(earning.amount)
-                })
-            else:
-                fixed_amount = Decimal(str(earning.amount))
-                additional_earnings += fixed_amount
-                earnings_list.append({
-                    "component_name": earning.component_name,
-                    "amount": float(fixed_amount),
-                    "component_type": earning.component_type
-                })
-        
-        # Process deductions with proper calculation
-        deductions_list = []
-        additional_deductions = Decimal('0')
-        for deduction in update_data.deductions:
-            if deduction.component_type.lower() == "percentage":
-                calculated_amount = (annual_ctc * Decimal(str(deduction.amount)) / 100) / 12
-                additional_deductions += calculated_amount
-                deductions_list.append({
-                    "component_name": deduction.component_name,
-                    "amount": float(calculated_amount),
-                    "component_type": deduction.component_type,
-                    "original_percentage": float(deduction.amount)
-                })
-            else:
-                fixed_amount = Decimal(str(deduction.amount))
-                additional_deductions += fixed_amount
-                deductions_list.append({
-                    "component_name": deduction.component_name,
-                    "amount": float(fixed_amount),
-                    "component_type": deduction.component_type
-                })
-        
-        # Log component updates
-        for earning in earnings_list:
-            log_entry = ComponentUpdateLog(
-                employee_id=update_data.employee_id,
-                month=update_data.month,
-                component_name=earning["component_name"],
-                component_type="earnings",
-                amount=earning["amount"],
-                action="updated"
-            )
-            db.add(log_entry)
-        
-        for deduction in deductions_list:
-            log_entry = ComponentUpdateLog(
-                employee_id=update_data.employee_id,
-                month=update_data.month,
-                component_name=deduction["component_name"],
-                component_type="deductions",
-                amount=deduction["amount"],
-                action="updated"
-            )
-            db.add(log_entry)
-        
-        # Update salary components
-        payroll_record.salary_components = {
-            "earnings": earnings_list,
-            "deductions": deductions_list
-        }
-        
-        # Recalculate totals with base components
-        base_earnings = payroll_record.basic_salary + payroll_record.hra + payroll_record.allowance
-        base_deductions = (annual_ctc * payroll_record.provident_fund_percentage / 100) / 12 + payroll_record.professional_tax
-        
-        payroll_record.total_earnings = base_earnings + additional_earnings
-        payroll_record.total_deductions = base_deductions + additional_deductions
-        payroll_record.net_salary = payroll_record.total_earnings - payroll_record.total_deductions
-        
-        db.commit()
-        db.refresh(payroll_record)
-        
-        return {
-            "message": "Salary components updated successfully",
-            "employee_id": update_data.employee_id,
-            "month": update_data.month,
-            "calculation_breakdown": {
-                "base_earnings": {
-                    "basic_salary": float(payroll_record.basic_salary),
-                    "hra": float(payroll_record.hra),
-                    "allowance": float(payroll_record.allowance),
-                    "subtotal": float(base_earnings)
+        try:
+            payroll_record = db.query(PayrollSetup).filter(
+                PayrollSetup.employee_id == update_data.employee_id,
+                PayrollSetup.month == update_data.month
+            ).first()
+            
+            if not payroll_record:
+                return {"error": "Payroll record not found"}
+            
+            # Get employee for CTC
+            employee = db.query(Employee).filter(Employee.employee_id == update_data.employee_id).first()
+            if not employee:
+                return {"error": "Employee not found"}
+            
+            annual_ctc = Decimal(employee.annual_ctc)
+            
+            # Process earnings with calculations
+            earnings_list = []
+            additional_earnings = Decimal('0')
+            for earning in update_data.earnings:
+                if earning.component_type.lower() == "percentage":
+                    amount = (annual_ctc * Decimal(str(earning.amount)) / 100) / 12
+                    earnings_list.append({
+                        "component_name": earning.component_name,
+                        "amount": float(amount),
+                        "component_type": earning.component_type,
+                        "original_percentage": float(earning.amount)
+                    })
+                else:
+                    amount = Decimal(str(earning.amount))
+                    earnings_list.append({
+                        "component_name": earning.component_name,
+                        "amount": float(amount),
+                        "component_type": earning.component_type
+                    })
+                additional_earnings += amount
+            
+            # Process deductions with calculations
+            deductions_list = []
+            additional_deductions = Decimal('0')
+            for deduction in update_data.deductions:
+                if deduction.component_type.lower() == "percentage":
+                    amount = (annual_ctc * Decimal(str(deduction.amount)) / 100) / 12
+                    deductions_list.append({
+                        "component_name": deduction.component_name,
+                        "amount": float(amount),
+                        "component_type": deduction.component_type,
+                        "original_percentage": float(deduction.amount)
+                    })
+                else:
+                    amount = Decimal(str(deduction.amount))
+                    deductions_list.append({
+                        "component_name": deduction.component_name,
+                        "amount": float(amount),
+                        "component_type": deduction.component_type
+                    })
+                additional_deductions += amount
+            
+            # Update components and recalculate totals
+            components = {"earnings": earnings_list, "deductions": deductions_list}
+            
+            base_earnings = payroll_record.basic_salary + payroll_record.hra + payroll_record.allowance
+            base_deductions = (annual_ctc * payroll_record.provident_fund_percentage / 100) / 12 + payroll_record.professional_tax
+            
+            payroll_record.salary_components = components
+            flag_modified(payroll_record, "salary_components")
+            payroll_record.total_earnings = base_earnings + additional_earnings
+            payroll_record.total_deductions = base_deductions + additional_deductions
+            payroll_record.net_salary = payroll_record.total_earnings - payroll_record.total_deductions
+            
+            db.commit()
+            db.refresh(payroll_record)
+            
+            return {
+                "message": "Components updated and payslip recalculated",
+                "payroll_id": payroll_record.payroll_id,
+                "employee_id": update_data.employee_id,
+                "month": update_data.month,
+                "new_totals": {
+                    "total_earnings": float(payroll_record.total_earnings),
+                    "total_deductions": float(payroll_record.total_deductions),
+                    "net_salary": float(payroll_record.net_salary)
                 },
-                "additional_earnings": float(additional_earnings),
-                "base_deductions": {
-                    "provident_fund": float((annual_ctc * payroll_record.provident_fund_percentage / 100) / 12),
-                    "professional_tax": float(payroll_record.professional_tax),
-                    "subtotal": float(base_deductions)
-                },
-                "additional_deductions": float(additional_deductions)
-            },
-            "final_totals": {
-                "total_earnings": float(payroll_record.total_earnings),
-                "total_deductions": float(payroll_record.total_deductions),
-                "net_salary": float(payroll_record.net_salary)
-            },
-            "updated_components": {
-                "earnings": earnings_list,
-                "deductions": deductions_list
+                "updated_components": components
             }
-        }
+        except Exception as e:
+            return {"error": str(e)}
     
     @staticmethod
     def get_salary_history(db: Session, employee_id: str):
@@ -731,7 +697,8 @@ class SalaryService:
     
     @staticmethod
     def delete_salary_component(db: Session, delete_data: ComponentDelete):
-        """Delete specific salary component with proper recalculation"""
+        """Delete component and recalculate totals"""
+        print(f"DELETE DEBUG: employee_id={delete_data.employee_id}, month={delete_data.month}, component={delete_data.component_name}, type={delete_data.component_type}")
         try:
             payroll_record = db.query(PayrollSetup).filter(
                 PayrollSetup.employee_id == delete_data.employee_id,
@@ -741,73 +708,49 @@ class SalaryService:
             if not payroll_record:
                 raise HTTPException(status_code=404, detail="Payroll record not found")
             
-            if not payroll_record.salary_components:
-                raise HTTPException(status_code=404, detail="No salary components found")
-            
-            # Ensure salary_components is a dict
-            if isinstance(payroll_record.salary_components, str):
-                import json
-                payroll_record.salary_components = json.loads(payroll_record.salary_components)
-            
-            components = dict(payroll_record.salary_components)
-            component_found = False
-            deleted_component = None
-            
-            # Remove component and track what was deleted
-            if delete_data.component_type.lower() == "earnings":
-                original_earnings = components.get("earnings", [])
-                for comp in original_earnings:
-                    if comp["component_name"] == delete_data.component_name:
-                        deleted_component = comp
-                        break
-                new_earnings = [comp for comp in original_earnings if comp["component_name"] != delete_data.component_name]
-                component_found = len(new_earnings) < len(original_earnings)
-                components["earnings"] = new_earnings
-            elif delete_data.component_type.lower() == "deductions":
-                original_deductions = components.get("deductions", [])
-                for comp in original_deductions:
-                    if comp["component_name"] == delete_data.component_name:
-                        deleted_component = comp
-                        break
-                new_deductions = [comp for comp in original_deductions if comp["component_name"] != delete_data.component_name]
-                component_found = len(new_deductions) < len(original_deductions)
-                components["deductions"] = new_deductions
-            
-            if not component_found:
-                raise HTTPException(status_code=404, detail="Component not found")
-            
-            payroll_record.salary_components = components
-            
-            # Get employee for recalculation
+            # Get employee for CTC
             employee = db.query(Employee).filter(Employee.employee_id == delete_data.employee_id).first()
             if not employee:
                 raise HTTPException(status_code=404, detail="Employee not found")
-                
-            annual_ctc = Decimal(str(employee.annual_ctc))
             
-            # Recalculate remaining additional earnings
+            annual_ctc = Decimal(employee.annual_ctc)
+            
+            # Get components
+            components = payroll_record.salary_components or {"earnings": [], "deductions": []}
+            if isinstance(components, str):
+                import json
+                components = json.loads(components)
+            
+            # Remove component (case-insensitive and strip whitespace)
+            component_to_delete = delete_data.component_name.strip().lower()
+            deleted = False
+            
+            if delete_data.component_type.lower() == "earnings":
+                original_count = len(components.get("earnings", []))
+                components["earnings"] = [c for c in components.get("earnings", []) 
+                                        if c["component_name"].strip().lower() != component_to_delete]
+                deleted = len(components["earnings"]) < original_count
+            else:
+                original_count = len(components.get("deductions", []))
+                components["deductions"] = [c for c in components.get("deductions", []) 
+                                          if c["component_name"].strip().lower() != component_to_delete]
+                deleted = len(components["deductions"]) < original_count
+            
+            if not deleted:
+                raise HTTPException(status_code=404, detail=f"Component '{delete_data.component_name}' not found")
+            
+            # Recalculate additional amounts
             additional_earnings = Decimal('0')
             for earning in components.get("earnings", []):
                 if earning["component_type"].lower() == "percentage":
-                    # Use original percentage if available, otherwise calculate from amount
-                    if "original_percentage" in earning:
-                        additional_earnings += (annual_ctc * Decimal(str(earning["original_percentage"])) / 100) / 12
-                    else:
-                        # Assume the amount is already calculated monthly amount
-                        additional_earnings += Decimal(str(earning["amount"]))
+                    additional_earnings += (annual_ctc * Decimal(str(earning.get("original_percentage", earning["amount"]))) / 100) / 12
                 else:
                     additional_earnings += Decimal(str(earning["amount"]))
             
-            # Recalculate remaining additional deductions
             additional_deductions = Decimal('0')
             for deduction in components.get("deductions", []):
                 if deduction["component_type"].lower() == "percentage":
-                    # Use original percentage if available, otherwise calculate from amount
-                    if "original_percentage" in deduction:
-                        additional_deductions += (annual_ctc * Decimal(str(deduction["original_percentage"])) / 100) / 12
-                    else:
-                        # Assume the amount is already calculated monthly amount
-                        additional_deductions += Decimal(str(deduction["amount"]))
+                    additional_deductions += (annual_ctc * Decimal(str(deduction.get("original_percentage", deduction["amount"]))) / 100) / 12
                 else:
                     additional_deductions += Decimal(str(deduction["amount"]))
             
@@ -815,6 +758,7 @@ class SalaryService:
             base_earnings = payroll_record.basic_salary + payroll_record.hra + payroll_record.allowance
             base_deductions = (annual_ctc * payroll_record.provident_fund_percentage / 100) / 12 + payroll_record.professional_tax
             
+            payroll_record.salary_components = components
             payroll_record.total_earnings = base_earnings + additional_earnings
             payroll_record.total_deductions = base_deductions + additional_deductions
             payroll_record.net_salary = payroll_record.total_earnings - payroll_record.total_deductions
@@ -823,15 +767,12 @@ class SalaryService:
             db.refresh(payroll_record)
             
             return {
-                "message": f"Component '{delete_data.component_name}' deleted successfully",
+                "message": "Component deleted and payslip recalculated",
+                "payroll_id": payroll_record.payroll_id,
                 "employee_id": delete_data.employee_id,
                 "month": delete_data.month,
-                "deleted_component": {
-                    "name": delete_data.component_name,
-                    "type": delete_data.component_type,
-                    "details": deleted_component
-                },
-                "recalculated_totals": {
+                "deleted_component": delete_data.component_name,
+                "new_totals": {
                     "total_earnings": float(payroll_record.total_earnings),
                     "total_deductions": float(payroll_record.total_deductions),
                     "net_salary": float(payroll_record.net_salary)
@@ -841,9 +782,13 @@ class SalaryService:
         except HTTPException:
             raise
         except Exception as e:
+            error_msg = str(e) if str(e).strip() else f"Unknown error of type {type(e).__name__}"
+            print(f"DELETE COMPONENT ERROR: {error_msg}")
+            print(f"Error type: {type(e)}")
             import traceback
             traceback.print_exc()
-            raise HTTPException(status_code=500, detail=f"Error deleting salary component: {str(e)}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Error deleting component: {error_msg}")
     
     @staticmethod
     def cleanup_duplicate_records(db: Session, employee_id: str, month: str):
@@ -863,4 +808,142 @@ class SalaryService:
         elif len(duplicate_records) == 1:
             return duplicate_records[0]
         return None
+    
+    @staticmethod
+    def delete_payslip(db: Session, employee_id: str, month: str):
+        """Delete payslip by employee_id and month"""
+        payroll_record = db.query(PayrollSetup).filter(
+            PayrollSetup.employee_id == employee_id,
+            PayrollSetup.month == month
+        ).first()
+        
+        if not payroll_record:
+            raise HTTPException(status_code=404, detail="Payslip not found")
+        
+        payroll_id = payroll_record.payroll_id
+        db.delete(payroll_record)
+        db.commit()
+        
+        return {
+            "message": "Payslip deleted successfully",
+            "payroll_id": payroll_id,
+            "employee_id": employee_id,
+            "month": month
+        }
+    
+    @staticmethod
+    def check_components(db: Session, employee_id: str, month: str):
+        """Check salary components for employee and month"""
+        payroll_record = db.query(PayrollSetup).filter(
+            PayrollSetup.employee_id == employee_id,
+            PayrollSetup.month == month
+        ).first()
+        
+        if not payroll_record:
+            all_records = db.query(PayrollSetup).filter(PayrollSetup.employee_id == employee_id).all()
+            available_months = [r.month for r in all_records]
+            raise HTTPException(
+                status_code=404, 
+                detail={
+                    "error": "Payroll record not found",
+                    "employee_id": employee_id,
+                    "requested_month": month,
+                    "available_months": available_months
+                }
+            )
+        
+        components = payroll_record.salary_components or {"earnings": [], "deductions": []}
+        if isinstance(components, str):
+            import json
+            components = json.loads(components)
+        
+        return {
+            "employee_id": employee_id,
+            "month": month,
+            "payroll_id": payroll_record.payroll_id,
+            "components": components
+        }
+    
+    @staticmethod
+    def force_delete_component(db: Session, employee_id: str, month: str, component_name: str):
+        """Force delete a specific salary component"""
+        from sqlalchemy.orm.attributes import flag_modified
+        
+        payroll_record = db.query(PayrollSetup).filter(
+            PayrollSetup.employee_id == employee_id,
+            PayrollSetup.month == month
+        ).first()
+        
+        if not payroll_record:
+            raise HTTPException(status_code=404, detail="Payroll record not found")
+        
+        employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+        if not employee:
+            raise HTTPException(status_code=404, detail="Employee not found")
+        
+        annual_ctc = Decimal(employee.annual_ctc)
+        
+        components = payroll_record.salary_components or {"earnings": [], "deductions": []}
+        if isinstance(components, str):
+            import json
+            components = json.loads(components)
+        
+        component_lower = component_name.strip().lower()
+        deleted = False
+        
+        original_earnings = len(components.get("earnings", []))
+        components["earnings"] = [c for c in components.get("earnings", []) 
+                                if c["component_name"].strip().lower() != component_lower]
+        if len(components["earnings"]) < original_earnings:
+            deleted = True
+        
+        if not deleted:
+            original_deductions = len(components.get("deductions", []))
+            components["deductions"] = [c for c in components.get("deductions", []) 
+                                      if c["component_name"].strip().lower() != component_lower]
+            if len(components["deductions"]) < original_deductions:
+                deleted = True
+        
+        if not deleted:
+            raise HTTPException(status_code=404, detail=f"Component '{component_name}' not found")
+        
+        # Recalculate totals
+        additional_earnings = Decimal('0')
+        for earning in components.get("earnings", []):
+            if earning["component_type"].lower() == "percentage":
+                additional_earnings += (annual_ctc * Decimal(str(earning.get("original_percentage", earning["amount"]))) / 100) / 12
+            else:
+                additional_earnings += Decimal(str(earning["amount"]))
+        
+        additional_deductions = Decimal('0')
+        for deduction in components.get("deductions", []):
+            if deduction["component_type"].lower() == "percentage":
+                additional_deductions += (annual_ctc * Decimal(str(deduction.get("original_percentage", deduction["amount"]))) / 100) / 12
+            else:
+                additional_deductions += Decimal(str(deduction["amount"]))
+        
+        base_earnings = payroll_record.basic_salary + payroll_record.hra + payroll_record.allowance
+        base_deductions = (annual_ctc * payroll_record.provident_fund_percentage / 100) / 12 + payroll_record.professional_tax
+        
+        payroll_record.salary_components = components
+        flag_modified(payroll_record, "salary_components")
+        payroll_record.total_earnings = base_earnings + additional_earnings
+        payroll_record.total_deductions = base_deductions + additional_deductions
+        payroll_record.net_salary = payroll_record.total_earnings - payroll_record.total_deductions
+        
+        db.commit()
+        db.refresh(payroll_record)
+        
+        return {
+            "message": "Component deleted successfully",
+            "employee_id": employee_id,
+            "month": month,
+            "deleted_component": component_name,
+            "new_totals": {
+                "total_earnings": float(payroll_record.total_earnings),
+                "total_deductions": float(payroll_record.total_deductions),
+                "net_salary": float(payroll_record.net_salary)
+            },
+            "remaining_components": components
+        }
     

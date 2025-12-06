@@ -1,11 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
 from sqlalchemy.orm import Session
-from src.api.deps import get_db
-from src.schemas.expense import ExpenseResponse, ExpenseStatusResponse
-from src.services.expense_service import ExpenseService
+from api.deps import get_db
+from schemas.expense import ExpenseResponse, ExpenseStatusResponse
+from services.expense_service import ExpenseService
 from decimal import Decimal
 from datetime import date
-import os
 
 router = APIRouter()
 
@@ -20,16 +19,14 @@ def create_expense_request(
     db: Session = Depends(get_db)
 ):
     try:
-        # Save uploaded file (optional - file saved but path not stored in DB)
+        import base64
+        receipt_base64 = None
         if receipt_file:
-            upload_dir = "uploads/receipts"
-            os.makedirs(upload_dir, exist_ok=True)
-            file_path = f"{upload_dir}/{receipt_file.filename}"
-            with open(file_path, "wb") as buffer:
-                buffer.write(receipt_file.file.read())
+            file_content = receipt_file.file.read()
+            receipt_base64 = base64.b64encode(file_content).decode('utf-8')
         
         return ExpenseService.create_expense_with_file(
-            db, employee_id, category, description, amount, expense_date, None
+            db, employee_id, category, description, amount, expense_date, receipt_base64
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error creating expense: {str(e)}")

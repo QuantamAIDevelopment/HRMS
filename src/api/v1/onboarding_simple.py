@@ -2,19 +2,19 @@ from fastapi import APIRouter, Form, Depends, HTTPException, File, UploadFile
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from enum import Enum
-from src.api.deps import get_db
-from src.models.user import User
-from src.core.security import get_password_hash
-from src.services.email_service import send_otp_email
+from api.deps import get_db
+from models.user import User
+from core.security import get_password_hash
+from services.email_service import send_otp_email
 import random
 import string
 import json
 import os
-from src.models.Employee_models import (
+from models.Employee_models import (
     Employee, EmployeePersonalDetails, EducationalQualifications, 
     BankDetails, Assets, EmployeeWorkExperience, ShiftMaster, EmployeeDocuments
 )
-from src.schemas.Onboarding_schemas import ComprehensiveOnboardingCreate
+from schemas.Onboarding_schemas import ComprehensiveOnboardingCreate
 
 from datetime import datetime
 from decimal import Decimal

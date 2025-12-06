@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
-from src.models.session import get_db
-from src.models.Employee_models import Employee
-from src.models.payroll_setup import PayrollSetup
-from src.models.user import User
-from src.core.security import get_password_hash
+from models.session import get_db
+from models.Employee_models import Employee
+from models.payroll_setup import PayrollSetup
+from models.user import User
+from core.security import get_password_hash
 
 from typing import Optional, List
 import json
@@ -336,7 +336,7 @@ async def create_employee_with_files(
             raise HTTPException(status_code=400, detail=f"Email {email_id} already exists")
     
     try:
-        from src.models.Employee_models import PersonalDetails, BankDetails, Assets, Education, WorkExperience
+        from models.Employee_models import PersonalDetails, BankDetails, Assets, Education, WorkExperience
         
         # Parse JSON arrays
         work_exp_data = json.loads(work_experience) if work_experience != "[]" else []
@@ -502,7 +502,7 @@ async def upload_employee_documents(
         raise HTTPException(status_code=404, detail=f"Employee {employee_id} not found")
     
     try:
-        from src.models.Employee_models import Documents
+        from models.Employee_models import Documents
         
         # Create upload directory
         upload_dir = f"uploads/employees/{employee_id}"

@@ -2,9 +2,9 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from src.models.user import User
-from src.core.security import generate_otp
-from src.services.email_service import send_otp_email
+from models.user import User
+from core.security import generate_otp
+from services.email_service import send_otp_email
 import logging
 
 logger = logging.getLogger(__name__)

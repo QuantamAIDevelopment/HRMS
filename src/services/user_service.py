@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
-from src.models.user import User
-from src.core.security import get_password_hash, verify_password
-from src.schemas.user import UserCreate
-from src.services.email_service import send_user_credentials_email
+from models.user import User
+from core.security import get_password_hash, verify_password
+from schemas.user import UserCreate
+from services.email_service import send_user_credentials_email
 from datetime import datetime, timedelta
 import secrets
 import string

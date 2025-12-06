@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Form, Depends, HTTPException
 from sqlalchemy.orm import Session
-from src.api.deps import get_db
-from src.models.user import User
-from src.models.Employee_models import Employee
+from api.deps import get_db
+from models.user import User
+from models.Employee_models import Employee
 
-from src.core.security import get_password_hash
-from src.services.email_service import send_otp_email
+from core.security import get_password_hash
+from services.email_service import send_otp_email
 import random
 import string
 
@@ -50,7 +50,7 @@ def create_user(
     email: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    from src.services.user_service import UserService
+    from services.user_service import UserService
     
     try:
         # Check if user already exists with this email

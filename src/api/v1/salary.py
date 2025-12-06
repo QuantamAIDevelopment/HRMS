@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from src.api.deps import get_db
-from src.schemas.salary import SalaryCreate, SalaryResponse, PayslipResponse, PayrollSetupUpdate, SalaryComponentUpdate, ComponentDelete
-from src.services.salary_service import SalaryService
+from api.deps import get_db
+from schemas.salary import SalaryCreate, SalaryResponse, PayslipResponse, PayrollSetupUpdate, SalaryComponentUpdate, ComponentDelete
+from services.salary_service import SalaryService
 from pydantic import BaseModel, Field
 from typing import List
 import json
@@ -11,32 +11,17 @@ router = APIRouter()
 
 
 
-@router.delete("/delete-payslip/{payroll_id}/{employee_id}/{month}")
-def delete_payslip(payroll_id: int, employee_id: str, month: str, db: Session = Depends(get_db)):
-    """Delete payslip by payroll_id, employee_id, and month"""
+@router.delete("/delete-payslip/{employee_id}/{month}")
+def delete_payslip(employee_id: str, month: str, db: Session = Depends(get_db)):
+    """Delete payslip by employee_id and month"""
     try:
-        from src.models.salary import PayrollSetup
-        
-        payroll_record = db.query(PayrollSetup).filter(
-            PayrollSetup.payroll_id == payroll_id,
-            PayrollSetup.employee_id == employee_id,
-            PayrollSetup.month == month
-        ).first()
-        
-        if not payroll_record:
-            raise HTTPException(status_code=404, detail="Payslip not found for the specified payroll_id, employee_id, and month")
-        
-        db.delete(payroll_record)
-        db.commit()
-        
-        return {
-            "message": "Payslip deleted successfully", 
-            "payroll_id": payroll_id, 
-            "employee_id": employee_id,
-            "month": month
-        }
+        return SalaryService.delete_payslip(db, employee_id, month)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting payslip: {str(e)}")
+
+
 
 @router.get("/get-salary-summary/{employee_id}")
 def get_salary_summary(employee_id: str, db: Session = Depends(get_db)):
@@ -54,7 +39,7 @@ def get_all_salaries(db: Session = Depends(get_db)):
 @router.get("/all-employee-ids")
 def get_all_employee_ids(db: Session = Depends(get_db)):
     try:
-        from src.models.Employee_models import Employee
+        from models.Employee_models import Employee
         employees = db.query(Employee.employee_id).all()
         return {"employee_ids": [emp.employee_id for emp in employees]}
     except Exception as e:
@@ -131,28 +116,21 @@ def get_salary_history(employee_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving salary history: {str(e)}")
 
-@router.delete("/delete-component/{employee_id}/{month}/{component_name}")
-def delete_component_simple(
-    employee_id: str,
-    month: str,
-    component_name: str,
-    component_type: str = Query(..., description="earnings or deductions"),
-    db: Session = Depends(get_db)
-):
-    """Delete component by path parameters"""
+@router.get("/check-components/{employee_id}/{month}")
+def check_components(employee_id: str, month: str, db: Session = Depends(get_db)):
+    """Check salary components for employee and month"""
     try:
-        delete_data = ComponentDelete(
-            employee_id=employee_id,
-            month=month,
-            component_name=component_name,
-            component_type=component_type
-        )
-        return SalaryService.delete_salary_component(db, delete_data)
+        return SalaryService.check_components(db, employee_id, month)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error deleting salary component: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error checking components: {str(e)}")
 
-
-
+@router.delete("/force-delete/{employee_id}/{month}/{component_name}")
+def force_delete_component(employee_id: str, month: str, component_name: str, db: Session = Depends(get_db)):
+    """Force delete a specific salary component"""
+    try:
+        return SalaryService.force_delete_component(db, employee_id, month, component_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting component: {str(e)}")
 
 
 
