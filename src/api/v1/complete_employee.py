@@ -319,8 +319,7 @@ async def create_complete_employee(
                         doc_list.append({
                             "document_name": document_name[i].strip(),
                             "category": category[i].strip(),
-                            "file_name": files[i].filename,
-                            "file_data": file_base64
+                            "file_name": files[i].filename
                         })
                     else:
                         # Add document entry without file (empty value sent)
@@ -475,7 +474,6 @@ async def create_complete_employee(
                 document_name=doc.get("document_name"),
                 category=doc.get("category"),
                 file_name=file_name,
-                file_data=doc.get("file_data"),
                 upload_date=datetime.now().date(),
                 status="Uploaded" if file_name and file_name != "No file uploaded" else "Pending"
             )
@@ -553,14 +551,99 @@ HR Team"""
         created_documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
         created_assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
         
-        # Simple response to avoid validation issues
+        # Return complete employee information
         return {
             "message": "Employee created successfully",
             "employee_id": employee_id,
             "official_email": email_id,
             "temp_password_expires": expiry_time.strftime("%Y-%m-%d %H:%M:%S"),
             "onboarding_email_sent": email_sent,
-            "status": "success"
+            "status": "success",
+            "employee_data": {
+                "employee_info": {
+                    "employee_id": created_employee.employee_id,
+                    "first_name": created_employee.first_name,
+                    "last_name": created_employee.last_name,
+                    "email_id": created_employee.email_id,
+                    "phone_number": created_employee.phone_number,
+                    "department_id": created_employee.department_id,
+                    "designation": created_employee.designation,
+                    "joining_date": str(created_employee.joining_date),
+                    "reporting_manager": created_employee.reporting_manager,
+                    "location": created_employee.location,
+                    "employment_type": created_employee.employment_type,
+                    "annual_ctc": created_employee.annual_ctc,
+                    "status": created_employee.status
+                },
+                "personal_details": {
+                    "date_of_birth": str(created_personal.date_of_birth) if created_personal else None,
+                    "gender": created_personal.gender if created_personal else None,
+                    "marital_status": created_personal.marital_status if created_personal else None,
+                    "blood_group": created_personal.blood_group if created_personal else None,
+                    "nationality": created_personal.nationality if created_personal else None,
+                    "employee_phone": created_personal.employee_phone if created_personal else None,
+                    "employee_email": created_personal.employee_email if created_personal else None,
+                    "employee_alternate_phone": created_personal.employee_alternate_phone if created_personal else None,
+                    "employee_address": created_personal.employee_address if created_personal else None,
+                    "city": created_personal.city if created_personal else None,
+                    "state": created_personal.state if created_personal else None,
+                    "pincode": created_personal.pincode if created_personal else None,
+                    "country": created_personal.country if created_personal else None,
+                    "emergency_full_name": created_personal.emergency_full_name if created_personal else None,
+                    "emergency_relationship": created_personal.emergency_relationship if created_personal else None,
+                    "emergency_primary_phone": created_personal.emergency_primary_phone if created_personal else None,
+                    "emergency_alternate_phone": created_personal.emergency_alternate_phone if created_personal else None,
+                    "emergency_address": created_personal.emergency_address if created_personal else None
+                },
+                "bank_details": [{
+                    "bank_id": bank.bank_id,
+                    "account_number": bank.account_number,
+                    "account_holder_name": bank.account_holder_name,
+                    "ifsc_code": bank.ifsc_code,
+                    "bank_name": bank.bank_name,
+                    "branch": bank.branch,
+                    "account_type": bank.account_type,
+                    "pan_number": bank.pan_number,
+                    "aadhaar_number": bank.aadhaar_number
+                } for bank in created_bank],
+                "education": [{
+                    "edu_id": edu.edu_id,
+                    "course_name": edu.course_name,
+                    "institution_name": edu.institution_name,
+                    "specialization": edu.specialization,
+                    "start_year": edu.start_year,
+                    "end_year": edu.end_year,
+                    "grade": edu.grade,
+                    "skill_name": edu.skill_name,
+                    "proficiency_level": edu.proficiency_level
+                } for edu in created_education],
+                "work_experience": [{
+                    "experience_id": exp.experience_id,
+                    "experience_designation": exp.experience_designation,
+                    "company_name": exp.company_name,
+                    "start_date": str(exp.start_date) if exp.start_date else None,
+                    "end_date": str(exp.end_date) if exp.end_date else None,
+                    "description": exp.description
+                } for exp in created_work_exp],
+                "documents": [{
+                    "document_id": doc.document_id,
+                    "document_name": doc.document_name,
+                    "category": doc.category,
+                    "file_name": doc.file_name,
+                    "upload_date": str(doc.upload_date),
+                    "status": doc.status
+                } for doc in created_documents],
+                "assets": [{
+                    "asset_id": asset.asset_id,
+                    "serial_number": asset.serial_number,
+                    "asset_name": asset.asset_name,
+                    "asset_type": asset.asset_type,
+                    "status": asset.status,
+                    "condition": asset.condition,
+                    "purchase_date": str(asset.purchase_date) if asset.purchase_date else None,
+                    "value": float(asset.value) if asset.value else None
+                } for asset in created_assets]
+            }
         }
 
     except HTTPException:
