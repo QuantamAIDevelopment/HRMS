@@ -18,12 +18,16 @@ def get_password_hash(password):
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
+    now = datetime.utcnow()
     if expires_delta:
-        expire = datetime.utcnow() + expires_delta
+        expire = now + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
+        expire = now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire, "iat": int(now.timestamp())})
+    print(f"DEBUG: Token data before encoding: {to_encode}")
+    token = jwt.encode(to_encode, SECRET_KEY, algorithm="HS256")
+    print(f"DEBUG: Generated token: {token}")
+    return token
 
 def verify_token(token: str):
     try:
