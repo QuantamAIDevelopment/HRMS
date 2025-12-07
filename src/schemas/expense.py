@@ -9,11 +9,18 @@ class ExpenseBase(BaseModel):
     description: str
     amount: Decimal
     expense_date: date
+    receipt_url: Optional[str] = None
 
 class ExpenseCreate(ExpenseBase):
     pass
 
-class ExpenseResponse(ExpenseBase):
+class ExpenseResponse(BaseModel):
+    employee_id: str
+    category: str
+    description: str
+    amount: Decimal
+    expense_date: date
+    receipt_url: Optional[str] = None
     expense_id: int
     status: str
     created_at: datetime
@@ -25,6 +32,21 @@ class ExpenseResponse(ExpenseBase):
     
     class Config:
         from_attributes = True
+        
+    @classmethod
+    def model_validate(cls, obj):
+        return cls(
+            employee_id=obj.employee_id,
+            category=obj.category,
+            description=obj.description,
+            amount=obj.amount,
+            expense_date=obj.expense_date,
+            receipt_url=obj.receipt_url,
+            expense_id=obj.expense_id,
+            status=obj.status,
+            created_at=obj.created_at,
+            updated_at=obj.updated_at
+        )
 
 class ExpenseStatusResponse(BaseModel):
     """Response schema for expense status summary"""

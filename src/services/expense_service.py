@@ -13,6 +13,7 @@ class ExpenseService:
                 description=description,
                 amount=amount,
                 expense_date=expense_date,
+                receipt_url=file_path,
                 status="PENDING"
             )
             db.add(db_expense)

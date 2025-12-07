@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Numeric, Date, Text
+from sqlalchemy import Column, String, Integer, DateTime, Numeric, Date, Text, LargeBinary
 from sqlalchemy.sql import func
 from models.base import Base
 from datetime import datetime
@@ -13,6 +13,7 @@ class Expense(Base):
     description = Column(Text, nullable=False)
     amount = Column(Numeric(12, 2), nullable=False)
     expense_date = Column(Date, nullable=False)
+    receipt_url = Column(Text, nullable=True)
     status = Column(String(50), nullable=False, default="PENDING")
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

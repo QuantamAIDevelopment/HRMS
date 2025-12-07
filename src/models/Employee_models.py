@@ -1,6 +1,6 @@
 from sqlalchemy import (
     Column, String, Integer, Date, ForeignKey, Numeric, Time,
-    TIMESTAMP, CheckConstraint, Computed, Text, DateTime
+    TIMESTAMP, CheckConstraint, Computed, Text, DateTime, LargeBinary
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -172,6 +172,7 @@ class EmployeeDocuments(Base):
     employee_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="CASCADE"))
     document_name = Column(String(50), nullable=False)
     file_name = Column(String(255), nullable=False)
+    file_data = Column(LargeBinary, nullable=True)
     category = Column(String(50), nullable=False)
     upload_date = Column(Date, nullable=False)
     status = Column(String(50), default="Pending")
