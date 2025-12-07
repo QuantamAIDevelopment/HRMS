@@ -5,7 +5,7 @@ from typing import Optional
 import logging
  
 from ..models import Employee, EmployeePersonal, Attendance, Expense, LeaveManagement, TimeEntry, Department
-from ..schemas.dashboard import DashboardResponse, EmployeeProfile, AttendanceSummary, LeaveBalance as LeaveBalanceSchema, TimesheetSummary, ExpensesSummary, Birthday, Holiday as HolidaySchema, Document as DocumentSchema
+from ..schemas.dashboard import DashboardResponse, AttendanceSummary, LeaveBalance as LeaveBalanceSchema, TimesheetSummary, ExpensesSummary, Birthday, Holiday as HolidaySchema, Document as DocumentSchema
  
 logger = logging.getLogger(__name__)
  
@@ -21,11 +21,10 @@ class DashboardService:
                 return None
  
             return DashboardResponse(
-                employee_profile=self._get_employee_profile(employee),
-                attendance_summary=self._get_attendance_summary(employee_id),
+                attendance=self._get_attendance_summary(employee_id),
                 leave_balance=self._get_leave_balance(employee_id),
-                timesheet_summary=self._get_timesheet_summary(employee_id),
-                expenses_summary=self._get_expenses_summary(employee_id),
+                timesheet=self._get_timesheet_summary(employee_id),
+                expenses=self._get_expenses_summary(employee_id),
                 birthdays_this_month=self._get_birthdays_this_month(),
                 upcoming_holidays=self._get_upcoming_holidays(),
                 policy_documents=self._get_policy_documents()
@@ -34,26 +33,7 @@ class DashboardService:
             logger.error(f"Error getting dashboard data: {str(e)}")
             return None
  
-    def _get_employee_profile(self, employee: Employee) -> EmployeeProfile:
-        department_name = ""
-        if employee.department_id:
-            dept = self.db.query(Department).filter(Department.department_id == employee.department_id).first()
-            if dept:
-                department_name = dept.department_name
-       
-        # Compute full_name from first_name and last_name
-        full_name = f"{employee.first_name or ''} {employee.last_name or ''}".strip() or "Unknown"
-       
-        return EmployeeProfile(
-            employee_id=employee.employee_id or "",
-            full_name=full_name,
-            role=employee.designation or "",
-            department=department_name,
-            email=employee.email_id or "",
-            phone=employee.phone_number or "",
-            date_of_joining=employee.joining_date or date.today()
-        )
- 
+
     def _get_attendance_summary(self, employee_id: str) -> AttendanceSummary:
         try:
             from sqlalchemy import text
@@ -145,12 +125,12 @@ class DashboardService:
             week_hours = result.scalar() or 0
            
             return TimesheetSummary(
-                total_hours_this_week=float(week_hours)
+                hours_logged_this_week=float(week_hours)
             )
         except Exception as e:
             logger.error(f"Error fetching timesheet: {e}")
             return TimesheetSummary(
-                total_hours_this_week=0.0
+                hours_logged_this_week=0.0
             )
  
     def _get_expenses_summary(self, employee_id: str) -> ExpensesSummary:
@@ -221,8 +201,8 @@ class DashboardService:
            
             holidays = []
             for row in result:
-                # Format holiday date as "December 2025"
-                formatted_date = row.event_date.strftime("%B %Y")
+                # Format holiday date as "Monday, December 25, 2025"
+                formatted_date = row.event_date.strftime("%A, %B %d, %Y")
                
                 holidays.append(HolidaySchema(
                     holiday_name=row.title,

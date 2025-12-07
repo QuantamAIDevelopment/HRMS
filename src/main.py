@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .api.v1 import compliance, attendance, employees, departments, standard_policy
-from .api.v1 import dashboard, health, teamlead_dashboard, manager_dashboard, hr_manager_dashboard, hr_executive_dashboard, non_employee_dashboard
+from .api.v1 import unified_dashboard
 from .core.logging_config import setup_logging
 
 # Setup logging
@@ -32,13 +32,8 @@ app.include_router(standard_policy.router, prefix="/api/v1/policies")
 
 # Existing routers
 
-app.include_router(dashboard.router, prefix="/api/v1", tags=["Employee Dashboard"])
-app.include_router(teamlead_dashboard.router, prefix="/api/v1", tags=["Team Lead Dashboard"])
-app.include_router(manager_dashboard.router, prefix="/api/v1", tags=["Manager Dashboard"])
-app.include_router(hr_manager_dashboard.router, prefix="/api/v1", tags=["HR Manager Dashboard"])
-app.include_router(hr_executive_dashboard.router, prefix="/api/v1", tags=["HR Executive Dashboard"])
-app.include_router(non_employee_dashboard.router, prefix="/api/v1", tags=["Non-Employee Dashboard"])
-app.include_router(health.router, prefix="/api/v1", tags=["health"])
+app.include_router(unified_dashboard.router, prefix="/api/v1", tags=["Unified Dashboard"])
+
 
 # HR Manager Dashboard routers
 
