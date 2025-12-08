@@ -1,5 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from .api.v1 import compliance, attendance, employees, departments, standard_policy
 from .api.v1 import unified_dashboard
 from .core.logging_config import setup_logging
@@ -12,6 +14,24 @@ app = FastAPI(
     description="Human Resource Management System API",
     version="1.0.0"
 )
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for error in exc.errors():
+        error_dict = {
+            "loc": error["loc"],
+            "msg": error["msg"],
+            "type": error["type"]
+        }
+        if "input" in error:
+            error_dict["input"] = error["input"]
+        errors.append(error_dict)
+    
+    return JSONResponse(
+        status_code=422,
+        content={"detail": errors}
+    )
 
 # CORS middleware for frontend integration
 app.add_middleware(
