@@ -3,7 +3,7 @@ from typing import Optional
 from typing import Optional
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://postgres:psycho539@localhost:5432/hrms_db"
+    database_url: str
     secret_key: str = "your-secret-key-here"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
