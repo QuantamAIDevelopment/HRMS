@@ -27,7 +27,7 @@ app.include_router(employees.router, prefix="/api/v1")
 app.include_router(departments.router, prefix="/api/v1")
 app.include_router(compliance.router, prefix="/api/v1/compliance", tags=["Compliance Documents"])
 app.include_router(attendance.router, prefix="/api/v1/attendance_tracking", tags=["Attendance Tracking"])
-app.include_router(standard_policy.router, prefix="/api/v1/policies")
+app.include_router(standard_policy.router)
 
 
 # Existing routers

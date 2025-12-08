@@ -15,40 +15,20 @@ from ...schemas.policy import (
     StandardPolicyUpdate, FlexiblePolicyUpdate
 )
  
-router = APIRouter(tags=["policies"])
+router = APIRouter(prefix="/api/v1/standard-policy", tags=["standard-policy"])
  
-@router.get("/", response_model=List[PolicyListRead])
+@router.get("/", response_model=List[PolicyRead])
 def get_policies(db: Session = Depends(get_db)):
     service = PoliciesService(db)
     policies = service.get_all_policies()
     return policies
  
-@router.get("/by-name/{policy_name}", response_model=PolicyRead)
-def get_policy_by_name(policy_name: PolicyName, db: Session = Depends(get_db)):
-    service = PoliciesService(db)
-    policy = service.get_policy_by_name(policy_name)
-    if not policy:
-        raise HTTPException(status_code=404, detail="Policy not found")
-    return policy
+@router.post("/", response_model=PolicyRead, status_code=status.HTTP_201_CREATED)
+def create_policy(policy_data: PolicyCreate, db: Session = Depends(get_db)):
+    try:
+        service = PoliciesService(db)
+        policy = service.create_policy(policy_data)
+        return policy
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
  
- 
- 
-@router.put("/Standard Policy", response_model=PolicyRead)
-def update_standard_policy(policy_data: StandardPolicyUpdate, db: Session = Depends(get_db)):
-    service = PoliciesService(db)
-    # Convert to PolicyUpdate for service compatibility
-    update_data = PolicyUpdate(**policy_data.dict())
-    policy = service.update_policy_by_name("Standard Policy", update_data)
-    if not policy:
-        raise HTTPException(status_code=404, detail="Policy not found")
-    return policy
- 
-@router.put("/Flexible Policy", response_model=PolicyRead)
-def update_flexible_policy(policy_data: FlexiblePolicyUpdate, db: Session = Depends(get_db)):
-    service = PoliciesService(db)
-    # Convert to PolicyUpdate for service compatibility
-    update_data = PolicyUpdate(**policy_data.dict())
-    policy = service.update_policy_by_name("Flexible Policy", update_data)
-    if not policy:
-        raise HTTPException(status_code=404, detail="Policy not found")
-    return policy
