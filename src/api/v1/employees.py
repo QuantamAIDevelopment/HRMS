@@ -39,9 +39,10 @@ def get_employees(
     employee_items = []
     for emp in employees:
         department_name = EmployeeService.get_department_name_by_id(db, emp.department_id)
+        full_name = getattr(emp, 'full_name', None) or f"{emp.first_name} {emp.last_name}"
         employee_items.append(EmployeeListItem(
             employee_id=emp.employee_id,
-            full_name=emp.full_name or f"{emp.first_name} {emp.last_name}",
+            full_name=full_name,
             email_id=emp.email_id,
             department=department_name,
             designation=emp.designation,
@@ -76,8 +77,9 @@ def get_employee(
     
     # Calculate monthly estimate (annual_ctc / 12 if available)
     monthly_estimate = None
-    if employee.annual_ctc:
-        monthly_estimate = int(employee.annual_ctc / 12)
+    annual_ctc = getattr(employee, 'annual_ctc', None)
+    if annual_ctc:
+        monthly_estimate = int(annual_ctc / 12)
     
     # Calculate leave balances
     leave_balances = EmployeeService.calculate_leave_balances(db, employee_id, employee.annual_leaves)
@@ -86,9 +88,10 @@ def get_employee(
     department_name = EmployeeService.get_department_name_by_id(db, employee.department_id)
     
     # Build response with only requested fields
+    full_name = getattr(employee, 'full_name', None) or f"{employee.first_name} {employee.last_name}"
     response_data = {
         "employee_id": employee.employee_id,
-        "full_name": employee.full_name or f"{employee.first_name} {employee.last_name}",
+        "full_name": full_name,
         "designation": employee.designation,
         "status": getattr(employee, 'active_status', None) or "Active",
         "department": department_name,
@@ -96,7 +99,8 @@ def get_employee(
         "phone_number": employee.phone_number,
         "reporting_manager": employee.reporting_manager,
         "joining_date": employee.joining_date,
-        "annual_ctc": employee.annual_ctc,
+        "employee_type": employee.employee_type,
+        "annual_ctc": annual_ctc,
         "monthly_estimate": monthly_estimate,
         "casual_leave": leave_balances['casual_leave'],
         "sick_leave": leave_balances['sick_leave'],
@@ -174,16 +178,18 @@ def update_employee(
         department_name = EmployeeService.get_department_name_by_id(db, updated_employee.department_id)
         
         # Return updated employee with all current data (editable + read-only)
+        full_name = getattr(updated_employee, 'full_name', None) or f"{updated_employee.first_name} {updated_employee.last_name}"
+        annual_ctc = getattr(updated_employee, 'annual_ctc', None)
         return EmployeeUpdateResponse(
             employee_id=updated_employee.employee_id,
-            full_name=updated_employee.full_name or f"{updated_employee.first_name} {updated_employee.last_name}",
+            full_name=full_name,
             email_id=updated_employee.email_id,
             status=getattr(updated_employee, 'active_status', None) or "Active",
             department=department_name,
             designation=updated_employee.designation,
             reporting_manager=updated_employee.reporting_manager,
             joining_date=updated_employee.joining_date,
-            annual_ctc=updated_employee.annual_ctc,
+            annual_ctc=annual_ctc,
             casual_leave=leave_balances['casual_leave'],
             sick_leave=leave_balances['sick_leave'],
             earned_leave=leave_balances['earned_leave']

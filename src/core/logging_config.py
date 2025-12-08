@@ -1,7 +1,7 @@
 import logging
 import sys
 import os
-from ..config.settings import settings
+from src.config.settings import settings
 
 def setup_logging():
     """Setup structured logging for production"""

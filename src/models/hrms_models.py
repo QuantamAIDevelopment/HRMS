@@ -1,18 +1,18 @@
 from sqlalchemy import Column, Integer, String, Date, Time, Text, Numeric, Boolean, DateTime, ForeignKey, CheckConstraint, Index, Float
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.sql import func
-from sqlalchemy.ext.declarative import declarative_base
 import uuid
-
-Base = declarative_base()
+from .base import Base
 
 class Department(Base):
     __tablename__ = 'departments'
+    __table_args__ = {'extend_existing': True}
     department_id = Column(Integer, primary_key=True, autoincrement=True)
     department_name = Column(String(100), unique=True, nullable=False)
 
 class ShiftMaster(Base):
     __tablename__ = 'shift_master'
+    __table_args__ = {'extend_existing': True}
     shift_id = Column(Integer, primary_key=True, autoincrement=True)
     shift_name = Column(String(150), nullable=False)
     shift_type = Column(String(100), nullable=False)
@@ -35,16 +35,20 @@ class Employee(Base):
     phone_number = Column(String(20))
     location = Column(String(50))
     shift_id = Column(Integer, ForeignKey('shift_master.shift_id'))
+    employee_type = Column(String(50))
     profile_photo = Column(String(255))
+    annual_leaves = Column(Integer, server_default='21')
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (
         Index('idx_employees_department', 'department_id'),
         Index('idx_employees_shift', 'shift_id'),
+        {'extend_existing': True}
     )
 
 class EmployeePersonalDetail(Base):
     __tablename__ = 'employee_personal_details'
+    __table_args__ = {'extend_existing': True}
     id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey('employees.employee_id', ondelete='CASCADE'), unique=True, nullable=False)
     date_of_birth = Column(Date)
@@ -80,6 +84,7 @@ class BankDetail(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (
         CheckConstraint("account_type IN ('Savings','Current')", name='check_account_type'),
+        {'extend_existing': True}
     )
 
 class Asset(Base):
@@ -99,6 +104,7 @@ class Asset(Base):
         CheckConstraint("status IN ('Assigned','Available','Maintenance')", name='check_status'),
         CheckConstraint("condition IN ('Excellent','Good','Fair')", name='check_condition'),
         Index('idx_assets_employee', 'assigned_employee_id'),
+        {'extend_existing': True}
     )
 
 class Attendance(Base):
@@ -116,6 +122,7 @@ class Attendance(Base):
     __table_args__ = (
         Index('idx_attendance_emp', 'employee_id'),
         Index('idx_attendance_date', 'attendance_date'),
+        {'extend_existing': True}
     )
 
 class EducationalQualification(Base):
@@ -134,10 +141,12 @@ class EducationalQualification(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (
         Index('idx_edu_employee', 'employee_id'),
+        {'extend_existing': True}
     )
 
 class EmployeeDocument(Base):
     __tablename__ = 'employee_documents'
+    __table_args__ = {'extend_existing': True}
     document_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
     document_name = Column(String(50), nullable=False)
@@ -150,6 +159,7 @@ class EmployeeDocument(Base):
 
 class EmployeeExpense(Base):
     __tablename__ = 'employee_expenses'
+    __table_args__ = {'extend_existing': True}
     expense_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
     category = Column(String(100), nullable=False)
@@ -188,15 +198,18 @@ class PayrollSetup(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (
         CheckConstraint("pay_cycle IN ('Monthly','Weekly','Biweekly')", name='check_pay_cycle'),
+        {'extend_existing': True}
     )
 
 class LeaveManagement(Base):
     __tablename__ = 'leave_management'
+    __table_args__ = {'extend_existing': True}
     leave_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
     leave_type = Column(String(100), nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
+    employee_used_leaves = Column(Integer, server_default='0')
     reason = Column(Text)
     status = Column(String(50), server_default='Pending')
     created_at = Column(DateTime, server_default=func.now())
@@ -204,6 +217,7 @@ class LeaveManagement(Base):
 
 class OnboardingProcess(Base):
     __tablename__ = 'onboarding_process'
+    __table_args__ = {'extend_existing': True}
     onboarding_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
     name = Column(String(50), nullable=False)
@@ -217,6 +231,7 @@ class OnboardingProcess(Base):
 
 class JobTitle(Base):
     __tablename__ = 'job_titles'
+    __table_args__ = {'extend_existing': True}
     job_title_id = Column(Integer, primary_key=True, autoincrement=True)
     job_title = Column(String(150), nullable=False)
     job_description = Column(Text, nullable=False)
@@ -228,19 +243,20 @@ class JobTitle(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
 class TimeEntry(Base):
-    __tablename__ = 'time_entries'
-    time_entry_id = Column(Integer, primary_key=True, autoincrement=True)
-    employee_id = Column(String(50), ForeignKey('employees.employee_id', ondelete='CASCADE'), nullable=False)
-    entry_date = Column(Date, nullable=False)
-    project = Column(String(150), nullable=False)
-    task_description = Column(Text, nullable=False)
-    hours = Column(Numeric(5, 2), nullable=False)
+    __tablename__ = "time_entries"
+    __table_args__ = {'extend_existing': True}
+
+    time_entry_id = Column(String(50), primary_key=True, index=True, nullable=False)
+    employee_id = Column(String(50))
+    entry_date = Column(Date)
+    project = Column(String(150))
+    task_description = Column(Text)
+    hours = Column(Numeric(5, 2))
+    status = Column(String(50), default="PENDING_MANAGER_APPROVAL")
+    approver_id = Column(String(50))
+    approver_type = Column(String(20))  # MANAGER, HR_MANAGER, HR_EXECUTIVE
     created_at = Column(DateTime, server_default=func.now())
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
-    __table_args__ = (
-        Index('idx_time_entry_employee', 'employee_id'),
-        Index('idx_time_entry_date', 'entry_date'),
-    )
+    updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
 class ComplianceDocument(Base):
     __tablename__ = 'compliance_documents_and_policy_management'
@@ -255,10 +271,12 @@ class ComplianceDocument(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (
         CheckConstraint("category IN ('Policy','Compliance','Legal','Training')", name='check_category'),
+        {'extend_existing': True}
     )
 
 class PolicyMaster(Base):
     __tablename__ = 'policy_master'
+    __table_args__ = {'extend_existing': True}
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), unique=True, nullable=False)
     description = Column(Text)
@@ -279,6 +297,7 @@ class PolicyMaster(Base):
 
 class EventHoliday(Base):
     __tablename__ = "events_holidays"
+    __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True)
     title = Column(String(255))

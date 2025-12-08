@@ -17,4 +17,5 @@ class ComplianceDocument(Base):
     
     __table_args__ = (
         CheckConstraint("category IN ('Policy','Compliance','Legal','Training')", name='check_category'),
+        {'extend_existing': True}
     )

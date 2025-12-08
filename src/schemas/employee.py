@@ -83,6 +83,7 @@ class EmployeeDetailResponse(BaseModel):
     phone_number: Optional[str] = None
     reporting_manager: Optional[str] = None
     joining_date: date
+    employee_type: Optional[str] = None
     annual_ctc: Optional[int] = None
     monthly_estimate: Optional[int] = None
     casual_leave: int

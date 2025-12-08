@@ -45,9 +45,9 @@ def get_attendance(
             Attendance.work_hours,
             Attendance.status
         )
+        .select_from(Attendance)
         .join(Employee, Attendance.employee_id == Employee.employee_id)
         .join(Department, Employee.department_id == Department.department_id)
-        .outerjoin(PolicyMaster, Attendance.policy_id == PolicyMaster.id)
     )
     
     if month:

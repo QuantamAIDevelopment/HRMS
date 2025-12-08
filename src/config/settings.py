@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+from typing import Optional
 
 class Settings(BaseSettings):
     database_url: str = "postgresql://postgres:psycho539@localhost:5432/hrms_db"
