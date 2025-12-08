@@ -8,13 +8,11 @@ from ...models.employee_profile import ProfileEditRequest
 
 router = APIRouter()
 
-@router.get("/profile-requests")
 @router.get("/approval/profile-requests")
 def get_all_profile_requests(db: Session = Depends(get_db)):
     requests = db.query(ProfileEditRequest).all()
     return requests
 
-@router.get("/cards")
 @router.get("/approval/cards")
 def get_approval_cards(db: Session = Depends(get_db)):
     query = text("""
@@ -33,7 +31,6 @@ def get_approval_cards(db: Session = Depends(get_db)):
         "rejected": result.rejected or 0
     }
 
-@router.put("/employee/{employee_id}")
 @router.put("/approval/employee/{employee_id}")
 def update_employee_requests(employee_id: str, status: str = Query(...), comments: str = Query(None), db: Session = Depends(get_db)):
     edit_requests = db.query(ProfileEditRequest).filter(
@@ -91,6 +88,12 @@ def update_employee_requests(employee_id: str, status: str = Query(...), comment
                     else:
                         db.execute(query, {"new_value": new_value, "employee_id": employee_id})
             elif field_name in ["serial_number", "asset_name", "asset_type", "condition", "purchase_date", "value"]:
+                # Validate condition field values
+                if field_name == "condition":
+                    valid_conditions = ["Good", "Fair", "Poor", "Excellent", "Damaged"]
+                    if new_value not in valid_conditions:
+                        continue  # Skip invalid condition values
+                
                 query = text(f"UPDATE assets SET {field_name} = :new_value WHERE assigned_employee_id = :employee_id")
                 if field_name == "purchase_date":
                     from datetime import datetime

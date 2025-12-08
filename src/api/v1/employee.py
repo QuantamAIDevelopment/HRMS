@@ -13,7 +13,6 @@ from ...schemas.profile import ProfileEditRequestCreate
 
 router = APIRouter()
 
-@router.post("/{employee_id}/request-basic-edit")
 @router.post("/employees/{employee_id}/request-basic-edit")
 def request_basic_edit(employee_id: str, edit_request: ProfileEditRequestCreate, db: Session = Depends(get_db)):
     request = ProfileEditRequest(employee_id=employee_id, **edit_request.dict())
@@ -21,7 +20,6 @@ def request_basic_edit(employee_id: str, edit_request: ProfileEditRequestCreate,
     db.commit()
     return {"message": "Basic info edit request submitted"}
 
-@router.post("/{employee_id}/request-personal-edit")
 @router.post("/employees/{employee_id}/request-personal-edit")
 def request_personal_edit(employee_id: str, edit_request: ProfileEditRequestCreate, db: Session = Depends(get_db)):
     request = ProfileEditRequest(employee_id=employee_id, **edit_request.dict())
@@ -29,7 +27,6 @@ def request_personal_edit(employee_id: str, edit_request: ProfileEditRequestCrea
     db.commit()
     return {"message": "Personal details edit request submitted"}
 
-@router.post("/{employee_id}/request-bank-edit")
 @router.post("/employees/{employee_id}/request-bank-edit")
 def request_bank_edit(employee_id: str, edit_request: ProfileEditRequestCreate, db: Session = Depends(get_db)):
     request = ProfileEditRequest(employee_id=employee_id, **edit_request.dict())
@@ -37,7 +34,6 @@ def request_bank_edit(employee_id: str, edit_request: ProfileEditRequestCreate, 
     db.commit()
     return {"message": "Bank details edit request submitted"}
 
-@router.post("/{employee_id}/request-experience-edit")
 @router.post("/employees/{employee_id}/request-experience-edit")
 def request_experience_edit(employee_id: str, edit_request: ProfileEditRequestCreate, db: Session = Depends(get_db)):
     request = ProfileEditRequest(employee_id=employee_id, **edit_request.dict())
@@ -45,7 +41,6 @@ def request_experience_edit(employee_id: str, edit_request: ProfileEditRequestCr
     db.commit()
     return {"message": "Work experience edit request submitted"}
 
-@router.post("/{employee_id}/request-document-edit")
 @router.post("/employees/{employee_id}/request-document-edit")
 def request_document_edit(employee_id: str, edit_request: ProfileEditRequestCreate, db: Session = Depends(get_db)):
     request = ProfileEditRequest(employee_id=employee_id, **edit_request.dict())
@@ -53,7 +48,6 @@ def request_document_edit(employee_id: str, edit_request: ProfileEditRequestCrea
     db.commit()
     return {"message": "Document edit request submitted"}
 
-@router.post("/{employee_id}/request-assets-edit")
 @router.post("/employees/{employee_id}/request-assets-edit")
 def request_assets_edit(employee_id: str, edit_request: ProfileEditRequestCreate, db: Session = Depends(get_db)):
     request = ProfileEditRequest(employee_id=employee_id, **edit_request.dict())
@@ -61,7 +55,6 @@ def request_assets_edit(employee_id: str, edit_request: ProfileEditRequestCreate
     db.commit()
     return {"message": "Assets edit request submitted"}
 
-@router.get("/{employee_id}")
 @router.get("/employees/{employee_id}")
 def get_employee_complete(employee_id: str, db: Session = Depends(get_db)):
     from sqlalchemy.orm import joinedload
