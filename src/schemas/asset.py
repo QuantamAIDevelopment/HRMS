@@ -7,9 +7,11 @@ class AssetCreate(BaseModel):
     asset_type: str
     serial_number: str
     status: str = "Available"
+    condition: Optional[str] = None
     employee_id: Optional[str] = None
     assigned_to: Optional[str] = None
     purchase_date: Optional[date] = None
+    value: Optional[float] = None
     note: Optional[str] = None
 
 class AssetUpdate(BaseModel):
@@ -17,9 +19,11 @@ class AssetUpdate(BaseModel):
     asset_type: Optional[str] = None
     serial_number: Optional[str] = None
     status: Optional[str] = None
+    condition: Optional[str] = None
     employee_id: Optional[str] = None
     assigned_to: Optional[str] = None
     purchase_date: Optional[date] = None
+    value: Optional[float] = None
     note: Optional[str] = None
 
 class AssetResponse(BaseModel):
@@ -28,9 +32,11 @@ class AssetResponse(BaseModel):
     asset_type: str
     serial_number: str
     status: str
+    condition: Optional[str] = None
     employee_id: Optional[str] = None
     assigned_to: Optional[str] = None
     purchase_date: Optional[date] = None
+    value: Optional[float] = None
     note: Optional[str] = None
 
     class Config:

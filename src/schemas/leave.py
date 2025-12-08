@@ -18,9 +18,6 @@ class LeaveResponse(BaseModel):
     reason: Optional[str] = None
     status: str
 
-    class Config:
-        from_attributes = True
-
 class LeaveApproval(BaseModel):
     leave_id: int
     action: str

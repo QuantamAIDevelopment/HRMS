@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
-from models.session import get_db
-from services.leave_service import LeaveService, ManagerService, HRExecutiveService
-from schemas.leave import *
+from src.models.session import get_db
+from src.services.leave_service import LeaveService, ManagerService, HRExecutiveService
+from src.schemas.leave import LeaveCreate, LeaveResponse, LeaveBalance, ManagerLeaveCreate, ManagerLeaveResponse, ManagerBalanceResponse, HRExecutiveLeaveCreate, HRExecutiveLeaveResponse, HRExecutiveBalanceResponse
+from src.models.leave import Leave
 
 router = APIRouter()
 
@@ -55,10 +56,24 @@ def approve_reject_leave(leave_id: str, action: str = Query(...), manager_id: st
         designation = emp_result[0]
         if designation and 'manager' not in designation.lower():
             raise HTTPException(status_code=403, detail="Access denied. Only managers can approve leaves.")
-        result = LeaveService.approve_leave(db, leave_id, manager_id, "Manager", action)
-        if not result:
+        
+        leave = db.query(Leave).filter(Leave.leave_id == int(leave_id)).first()
+        if not leave:
             raise HTTPException(status_code=404, detail="Leave not found")
-        return result
+        
+        leave.status = "APPROVED" if action.lower() == "approve" else "REJECTED"
+        db.commit()
+        db.refresh(leave)
+        
+        return LeaveResponse(
+            leave_id=leave.leave_id,
+            employee_id=leave.employee_id,
+            leave_type=leave.leave_type,
+            start_date=leave.start_date,
+            end_date=leave.end_date,
+            reason=leave.reason,
+            status=leave.status
+        )
     except HTTPException:
         raise
     except Exception as e:

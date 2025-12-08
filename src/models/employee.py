@@ -1,6 +1,5 @@
 from sqlalchemy import Column, String, Integer
-from sqlalchemy.orm import relationship
-from models.base import Base
+from src.models.base import Base
 
 class Employee(Base):
     __tablename__ = "employees"
@@ -13,6 +12,3 @@ class Employee(Base):
     manager_id = Column(String, nullable=True)
     department = Column(String, nullable=True)
     employee_total_leaves = Column(Integer, nullable=True)
-    
-    # Relationship
-    leaves = relationship("Leave", back_populates="employee")

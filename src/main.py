@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from api.v1 import leave_router, asset_router, attendance_router
-from models.base import Base
-from models.session import engine
+from src.api.v1 import leave_router, asset_router, attendance_router
+from src.models.base import Base
+from src.models.session import engine
 
 Base.metadata.create_all(bind=engine)
 

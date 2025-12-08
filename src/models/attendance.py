@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, DateTime, Date, Float, Boolean
 from datetime import datetime
-from models.base import Base
+from src.models.base import Base
 
 class Attendance(Base):
     __tablename__ = "attendance"

@@ -1,8 +1,8 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from models.asset import Asset
-from schemas.asset import AssetCreate, AssetUpdate, AssetResponse, AssetSummary
+from src.models.asset import Asset
+from src.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, AssetSummary
 from datetime import date
 
 class AssetService:
@@ -11,6 +11,14 @@ class AssetService:
         existing_asset = db.query(Asset).filter(Asset.serial_number == asset.serial_number).first()
         if existing_asset:
             raise ValueError(f"Asset with serial number '{asset.serial_number}' already exists")
+        if not asset.condition:
+            raise ValueError("condition is required")
+        if asset.status == "Assigned":
+            if not asset.employee_id or not asset.assigned_to:
+                raise ValueError("employee_id and assigned_to are required when status is Assigned")
+        elif asset.status == "Available":
+            asset.employee_id = None
+            asset.assigned_to = None
         db_asset = Asset(**asset.dict())
         db.add(db_asset)
         db.commit()
