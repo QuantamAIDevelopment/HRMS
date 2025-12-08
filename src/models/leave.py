@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, Text
+from sqlalchemy import Column, Integer, String, DateTime, Date, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from models.base import Base
@@ -7,12 +7,15 @@ class Leave(Base):
     __tablename__ = "leave_management"
     
     leave_id = Column(Integer, primary_key=True, index=True)
-    employee_id = Column(String, nullable=False)
+    employee_id = Column(String, ForeignKey("employees.employee_id"), nullable=False)
     leave_type = Column(String, nullable=False)
     start_date = Column(Date, nullable=False)
     end_date = Column(Date, nullable=False)
     reason = Column(Text, nullable=True)
     status = Column(String, default="PENDING", nullable=False)
+    
+    # Relationship
+    employee = relationship("Employee", back_populates="leaves")
 
 class EmployeeBalance(Base):
     __tablename__ = "employee_balances"

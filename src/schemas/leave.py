@@ -40,9 +40,6 @@ class LeaveBalance(BaseModel):
     remaining_sick: int = 6
     remaining_earned: int = 6
 
-    class Config:
-        from_attributes = True
-
 class ManagerLeaveCreate(BaseModel):
     manager_id: str
     leave_type: str
@@ -61,9 +58,6 @@ class ManagerLeaveResponse(BaseModel):
     approved_by: Optional[str] = None
     comments: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 class ManagerBalanceResponse(BaseModel):
     manager_id: str
     casual_leave: int = 8
@@ -77,9 +71,6 @@ class ManagerBalanceResponse(BaseModel):
     remaining_casual: int = 8
     remaining_sick: int = 8
     remaining_earned: int = 15
-
-    class Config:
-        from_attributes = True
 
 class TeamLeadLeaveCreate(BaseModel):
     team_lead_id: str
@@ -99,9 +90,6 @@ class TeamLeadLeaveResponse(BaseModel):
     approved_by: Optional[str] = None
     comments: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 class TeamLeadBalanceResponse(BaseModel):
     team_lead_id: str
     casual_leave: int = 7
@@ -115,9 +103,6 @@ class TeamLeadBalanceResponse(BaseModel):
     remaining_casual: int = 7
     remaining_sick: int = 10
     remaining_earned: int = 21
-
-    class Config:
-        from_attributes = True
 
 class HRExecutiveLeaveCreate(BaseModel):
     hr_executive_id: str
@@ -137,9 +122,6 @@ class HRExecutiveLeaveResponse(BaseModel):
     approved_by: Optional[str] = None
     comments: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 class HRExecutiveBalanceResponse(BaseModel):
     hr_executive_id: str
     casual_leave: int = 10
@@ -153,6 +135,3 @@ class HRExecutiveBalanceResponse(BaseModel):
     remaining_casual: int = 10
     remaining_sick: int = 12
     remaining_earned: int = 25
-
-    class Config:
-        from_attributes = True

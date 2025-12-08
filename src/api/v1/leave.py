@@ -46,7 +46,7 @@ def get_pending_leaves_for_manager(manager_id: str, db: Session = Depends(get_db
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/leave/approve/{leave_id}", tags=["Leave Management"])
+@router.put("/leave/approve/{leave_id}", response_model=LeaveResponse, tags=["Leave Management"])
 def approve_reject_leave(leave_id: str, action: str = Query(...), manager_id: str = Query(...), db: Session = Depends(get_db)):
     try:
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": manager_id}).fetchone()
@@ -58,7 +58,7 @@ def approve_reject_leave(leave_id: str, action: str = Query(...), manager_id: st
         result = LeaveService.approve_leave(db, leave_id, manager_id, "Manager", action)
         if not result:
             raise HTTPException(status_code=404, detail="Leave not found")
-        return {"message": f"Leave {action}{'d' if action == 'approve' else 'ed'} successfully"}
+        return result
     except HTTPException:
         raise
     except Exception as e:

@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional
-from models.leave import Leave, EmployeeBalance, ManagerBalance, TeamLeadBalance, HRExecutiveBalance
+from models.leave import Leave, EmployeeBalance, ManagerBalance, HRExecutiveBalance
 from schemas.leave import *
 
 class LeaveService:
@@ -18,7 +18,15 @@ class LeaveService:
         db.add(db_leave)
         db.commit()
         db.refresh(db_leave)
-        return LeaveResponse(**db_leave.__dict__)
+        return LeaveResponse(
+            leave_id=db_leave.leave_id,
+            employee_id=db_leave.employee_id,
+            leave_type=db_leave.leave_type,
+            start_date=db_leave.start_date,
+            end_date=db_leave.end_date,
+            reason=db_leave.reason,
+            status=db_leave.status
+        )
 
     @staticmethod
     def get_leaves(db: Session, employee_id: Optional[str] = None, status: Optional[str] = None) -> List[LeaveResponse]:
@@ -28,7 +36,15 @@ class LeaveService:
         if status:
             query = query.filter(Leave.status == status)
         leaves = query.order_by(Leave.leave_id.desc()).all()
-        return [LeaveResponse(**leave.__dict__) for leave in leaves]
+        return [LeaveResponse(
+            leave_id=leave.leave_id,
+            employee_id=leave.employee_id,
+            leave_type=leave.leave_type,
+            start_date=leave.start_date,
+            end_date=leave.end_date,
+            reason=leave.reason,
+            status=leave.status
+        ) for leave in leaves]
 
     @staticmethod
     def get_pending_approvals(db: Session, approver_id: str) -> List[LeaveResponse]:
@@ -37,7 +53,15 @@ class LeaveService:
         if not employee_id_list:
             return []
         leaves = db.query(Leave).filter(Leave.employee_id.in_(employee_id_list), Leave.status.in_(["PENDING", "APPROVED", "REJECTED"])).all()
-        return [LeaveResponse(**leave.__dict__) for leave in leaves]
+        return [LeaveResponse(
+            leave_id=leave.leave_id,
+            employee_id=leave.employee_id,
+            leave_type=leave.leave_type,
+            start_date=leave.start_date,
+            end_date=leave.end_date,
+            reason=leave.reason,
+            status=leave.status
+        ) for leave in leaves]
 
     @staticmethod
     def approve_leave(db: Session, leave_id: str, approver_id: str, approver_role: str, action: str, comments: Optional[str] = None) -> Optional[LeaveResponse]:
@@ -49,7 +73,15 @@ class LeaveService:
         db.refresh(leave)
         if action.lower() == "approve":
             LeaveService._update_balance(db, leave.employee_id, leave.leave_type, EmployeeBalance)
-        return LeaveResponse(**leave.__dict__)
+        return LeaveResponse(
+            leave_id=leave.leave_id,
+            employee_id=leave.employee_id,
+            leave_type=leave.leave_type,
+            start_date=leave.start_date,
+            end_date=leave.end_date,
+            reason=leave.reason,
+            status=leave.status
+        )
 
     @staticmethod
     def _update_balance(db: Session, employee_id: str, leave_type: str, BalanceModel):
@@ -59,11 +91,7 @@ class LeaveService:
                 if not balance:
                     balance = BalanceModel(manager_id=employee_id)
                     db.add(balance)
-            elif BalanceModel == TeamLeadBalance:
-                balance = db.query(BalanceModel).filter(BalanceModel.team_lead_id == employee_id).first()
-                if not balance:
-                    balance = BalanceModel(team_lead_id=employee_id)
-                    db.add(balance)
+
             elif BalanceModel == HRExecutiveBalance:
                 balance = db.query(BalanceModel).filter(BalanceModel.hr_executive_id == employee_id).first()
                 if not balance:
@@ -101,7 +129,7 @@ class ManagerService:
 
     @staticmethod
     def get_leave_balance(db: Session, manager_id: str) -> ManagerBalanceResponse:
-        emp_result = db.execute(text("SELECT total_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": manager_id}).fetchone()
+        emp_result = db.execute(text("SELECT employee_total_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": manager_id}).fetchone()
         total_leaves = emp_result[0] if emp_result and emp_result[0] else 31
         each_leave = total_leaves // 3
         
@@ -138,7 +166,7 @@ class ManagerService:
         leaves = db.query(Leave).filter(Leave.employee_id.in_(manager_id_list), Leave.status.in_(["PENDING", "APPROVED", "REJECTED"])).all()
         return [ManagerLeaveResponse(leave_id=l.leave_id, manager_id=l.employee_id, leave_type=l.leave_type, start_date=l.start_date, end_date=l.end_date, reason=l.reason, status=l.status, approved_by=None, comments=None) for l in leaves]
 
-class TeamLeadService:
+# TeamLeadService removed
     @staticmethod
     def create_leave(db: Session, leave: TeamLeadLeaveCreate) -> TeamLeadLeaveResponse:
         db_leave = Leave(employee_id=leave.team_lead_id, leave_type=leave.leave_type, start_date=leave.start_date, end_date=leave.end_date, reason=leave.reason, status="PENDING")
@@ -154,7 +182,7 @@ class TeamLeadService:
 
     @staticmethod
     def get_leave_balance(db: Session, team_lead_id: str) -> TeamLeadBalanceResponse:
-        emp_result = db.execute(text("SELECT total_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": team_lead_id}).fetchone()
+        emp_result = db.execute(text("SELECT employee_total_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": team_lead_id}).fetchone()
         total_leaves = emp_result[0] if emp_result and emp_result[0] else 38
         each_leave = total_leaves // 3
         
@@ -208,7 +236,7 @@ class HRExecutiveService:
 
     @staticmethod
     def get_leave_balance(db: Session, hr_executive_id: str) -> HRExecutiveBalanceResponse:
-        emp_result = db.execute(text("SELECT total_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": hr_executive_id}).fetchone()
+        emp_result = db.execute(text("SELECT employee_total_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": hr_executive_id}).fetchone()
         total_leaves = emp_result[0] if emp_result and emp_result[0] else 47
         each_leave = total_leaves // 3
         

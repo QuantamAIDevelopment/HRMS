@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer
+from sqlalchemy.orm import relationship
 from models.base import Base
 
 class Employee(Base):
@@ -11,4 +12,7 @@ class Employee(Base):
     role = Column(String, nullable=True)
     manager_id = Column(String, nullable=True)
     department = Column(String, nullable=True)
-    total_leaves = Column(Integer, nullable=True)
+    employee_total_leaves = Column(Integer, nullable=True)
+    
+    # Relationship
+    leaves = relationship("Leave", back_populates="employee")
