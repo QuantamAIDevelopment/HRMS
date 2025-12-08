@@ -80,38 +80,7 @@ def get_all_expenses(db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching expenses: {str(e)}")
 
-@router.get("/employee-expenses/{expense_id}")
-def get_expense(expense_id: int, db: Session = Depends(get_db)):
-    expense = ExpenseService.get_expense_by_id(db, expense_id)
-    if not expense:
-        raise HTTPException(status_code=404, detail="Expense not found")
-    
-    # Convert receipt_url from bytes to string if it exists
-    receipt_url_str = None
-    if hasattr(expense, 'receipt_url') and expense.receipt_url is not None:
-        try:
-            if isinstance(expense.receipt_url, bytes):
-                receipt_url_str = expense.receipt_url.decode('utf-8')
-            elif isinstance(expense.receipt_url, memoryview):
-                receipt_url_str = expense.receipt_url.tobytes().decode('utf-8')
-            else:
-                receipt_url_str = str(expense.receipt_url)
-        except:
-            receipt_url_str = str(expense.receipt_url)
-    
-    return {
-        "expense_id": expense.expense_id,
-        "expense_code": expense.expense_code,
-        "employee_id": expense.employee_id,
-        "category": expense.category,
-        "description": expense.description,
-        "amount": float(expense.amount),
-        "expense_date": expense.expense_date.isoformat(),
-        "receipt_url": receipt_url_str,
-        "status": expense.status,
-        "created_at": expense.created_at.isoformat(),
-        "updated_at": expense.updated_at.isoformat()
-    }
+
 
 @router.get("/employee-expenses/employee/{employee_id}")
 def get_employee_expenses(employee_id: str, db: Session = Depends(get_db)):
@@ -147,31 +116,3 @@ def get_employee_expense_status(employee_id: str, db: Session = Depends(get_db))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching employee expense status: {str(e)}")
 
-@router.get("/test-receipt/{expense_id}")
-def test_receipt_field(expense_id: int, db: Session = Depends(get_db)):
-    """Test endpoint to check receipt_url field"""
-    from sqlalchemy import text
-    
-    try:
-        # Check if column exists in database
-        result = db.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name = 'employee_expenses' AND column_name = 'receipt_url'"))
-        column_exists = result.fetchone() is not None
-        
-        # Try direct SQL query
-        sql_result = db.execute(text(f"SELECT expense_id, receipt_url FROM employee_expenses WHERE expense_id = {expense_id}"))
-        sql_data = sql_result.fetchone()
-        
-        # Get expense via ORM
-        expense = ExpenseService.get_expense_by_id(db, expense_id)
-        
-        return {
-            "expense_id": expense_id,
-            "column_exists_in_db": column_exists,
-            "sql_query_result": dict(sql_data._mapping) if sql_data else None,
-            "orm_expense_found": expense is not None,
-            "orm_has_receipt_url": hasattr(expense, 'receipt_url') if expense else False,
-            "orm_receipt_url_value": getattr(expense, 'receipt_url', 'NOT_FOUND') if expense else None,
-            "all_orm_attributes": [attr for attr in dir(expense) if not attr.startswith('_')] if expense else []
-        }
-    except Exception as e:
-        return {"error": str(e)}
