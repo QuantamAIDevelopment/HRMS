@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, extract
-from typing import List, Optional
-from datetime import date
+from typing import Optional
+from datetime import datetime, date
 from decimal import Decimal
 from ...models.session import get_db
 from ...models.hrms_models import Attendance, Employee, Department, PolicyMaster, LeaveManagement
@@ -26,6 +26,50 @@ def check_hr_access(current_employee: dict = Depends(get_current_employee)):
             detail="Access denied. Only HR Manager and HR Executive can access attendance tracking."
         )
     return current_employee
+
+@router.post("/attendance/punch-in")
+def punch_in(employee_id: str, db: Session = Depends(get_db)):
+    try:
+        active = db.query(Attendance).filter(Attendance.employee_id == employee_id, Attendance.attendance_date == date.today(), Attendance.punch_out == None).first()
+        if active:
+            raise HTTPException(status_code=400, detail="Already punched in")
+        now = datetime.now()
+        attendance = Attendance(employee_id=employee_id, attendance_date=now.date(), punch_in=now.time(), status="Present")
+        db.add(attendance)
+        db.commit()
+        db.refresh(attendance)
+        return {"success": True, "message": "Punched in successfully", "attendance_id": attendance.attendance_id, "punch_in": attendance.punch_in}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/attendance/punch-out")
+def punch_out(employee_id: str, db: Session = Depends(get_db)):
+    try:
+        active = db.query(Attendance).filter(Attendance.employee_id == employee_id, Attendance.attendance_date == date.today(), Attendance.punch_out == None).first()
+        if not active:
+            raise HTTPException(status_code=400, detail="No active session found")
+        now = datetime.now()
+        punch_in_dt = datetime.combine(active.attendance_date, active.punch_in)
+        time_diff = now - punch_in_dt
+        work_hours = round(time_diff.total_seconds() / 3600, 2)
+        active.punch_out = now.time()
+        active.work_hours = work_hours
+        db.commit()
+        return {"success": True, "message": "Punched out successfully", "attendance_id": active.attendance_id, "punch_out": active.punch_out, "work_hours": work_hours}
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/attendance/recent")
+def get_recent_attendance(employee_id: str, db: Session = Depends(get_db)):
+    try:
+        records = db.query(Attendance).filter(Attendance.employee_id == employee_id).order_by(Attendance.attendance_date.desc()).limit(10).all()
+        return [{"attendance_id": r.attendance_id, "employee_id": r.employee_id, "attendance_date": r.attendance_date, "punch_in": r.punch_in, "punch_out": r.punch_out, "work_hours": r.work_hours, "status": r.status, "created_at": r.created_at} for r in records]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/attendance", response_model=AttendanceResponse)
 def get_attendance(

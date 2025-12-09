@@ -25,7 +25,7 @@ A comprehensive FastAPI-based Human Resource Management System backend with comp
 - **Profile Management**: Employee self-service profile updates
 - **Approval Workflows**: Multi-level approval system for various HR processes
 
-## Project Structure
+## Folder Structure
 
 ```
 HRMS/

@@ -59,17 +59,12 @@ class PoliciesService:
         policy = self.db.query(Policy).filter(Policy.name == policy_name).first()
         if not policy:
             return None
- 
+        
         try:
             update_dict = policy_data.dict(exclude_unset=True, exclude_none=False)
-           
             for field, value in update_dict.items():
-                if field == 'working_days_per_week' and value == 0:
-                    continue
                 setattr(policy, field, value)
- 
-            self.db.add(policy)
-            self.db.flush()
+            
             self.db.commit()
             self.db.refresh(policy)
             return policy

@@ -1,9 +1,9 @@
 from sqlalchemy import Column, String, Float, Integer, Boolean, Text
 from sqlalchemy.dialects.postgresql import UUID
 import uuid
-from .base import BaseModel
+from .base import Base
  
-class Policy(BaseModel):
+class Policy(Base):
     __tablename__ = "policy_master"
     __table_args__ = {'extend_existing': True}
    

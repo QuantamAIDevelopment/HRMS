@@ -1,5 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from .api.v1 import compliance, attendance, employees, departments, standard_policy, unified_dashboard, leave_router, asset_router
 from .api.v1.job_titles import router as job_title_router
 from .api.v1.timesheet import router as timesheet_router
 from .api.v1.employee import router as employee_router
@@ -8,15 +11,7 @@ from .api.v1.approval import router as approval_router
 from .api.v1.shifts import router as shifts_router
 from .api.v1.off_boarding import router as off_boarding_router
 from .api.v1.events_holidays import router as events_holidays_router
-from fastapi import FastAPI, Request
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
-from .api.v1 import compliance, attendance, employees, departments, standard_policy
-from .api.v1 import unified_dashboard
 from .core.logging_config import setup_logging
-
-app = FastAPI(title="HRMS Backend")
 
 # Setup logging
 setup_logging()
@@ -68,25 +63,17 @@ app.include_router(approval_router, prefix="/api/v1/approval", tags=["approval"]
 app.include_router(shifts_router, prefix="/api/v1/shifts", tags=["shifts"])
 app.include_router(off_boarding_router, prefix="/api/v1/off-boarding", tags=["off-boarding"])
 app.include_router(events_holidays_router, prefix="/api/v1/events-holidays", tags=["events-holidays"])
-
-# Existing routers
-
 app.include_router(unified_dashboard.router, prefix="/api/v1", tags=["Unified Dashboard"])
-
-
-# HR Manager Dashboard routers
-
+app.include_router(leave_router, prefix="/api/v1")
+app.include_router(asset_router, prefix="/api/v1")
 
 @app.get("/")
 def read_root():
-    return {"message": "HRMS Backend API"}
-
-    return {"message": "HRMS Backend API", "version": "1.0.0"}
+    return {"message": "HRMS Backend API", "version": "1.0.0", "status": "running"}
 
 @app.get("/health")
 def health_check():
     return {"status": "healthy"}
-    return {"message": "HRMS Dashboard API"}
 
 if __name__ == "__main__":
     import uvicorn

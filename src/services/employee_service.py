@@ -26,8 +26,7 @@ class EmployeeService:
                 Employee.first_name.ilike(f"%{search}%"),
                 Employee.last_name.ilike(f"%{search}%"),
                 Employee.employee_id.ilike(f"%{search}%"),
-                Employee.email_id.ilike(f"%{search}%"),
-                Employee.full_name.ilike(f"%{search}%")
+                Employee.email_id.ilike(f"%{search}%")
             )
             query = query.filter(search_filter)
         

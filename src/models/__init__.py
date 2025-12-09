@@ -1,4 +1,20 @@
-from .base import Base, BaseModel
+from .base import Base
+from .user import User
+from .employee import Employee
+from .leave import Leave
+from .asset import Asset
+from .attendance import Attendance
+
+__all__ = [
+    "Base",
+    "User",
+    "Employee",
+    "Leave",
+    "Asset",
+    "Attendance"
+]
+
+from .base import Base
 from .job_title import JobTitle
 from .timesheet import Timesheet
 from .shift import Shift
@@ -14,7 +30,6 @@ from .hrms_models import (
 
 __all__ = [
     "Base",
-    "BaseModel",
     "Employee",
     "Department", 
     "Policy",
