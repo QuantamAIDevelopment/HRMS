@@ -171,7 +171,6 @@ class EmployeeDocuments(Base):
     document_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="CASCADE"))
     document_name = Column(String(50), nullable=False)
-    file_data = Column(LargeBinary, nullable=True)
     files = Column(LargeBinary, nullable=True)
     category = Column(String(50), nullable=False)
     upload_date = Column(Date, nullable=False)
