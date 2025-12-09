@@ -56,6 +56,25 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         }
     )
 
+# Add global exception handler for Internal Server Errors
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    import traceback
+    error_traceback = traceback.format_exc()
+    logger.error(f"Internal Server Error on {request.url}: {str(exc)}")
+    logger.error(f"Full traceback: {error_traceback}")
+    print(f"GLOBAL ERROR: {type(exc).__name__}: {str(exc)}")
+    print(f"TRACEBACK: {error_traceback}")
+    
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": f"Internal Server Error: {type(exc).__name__}: {str(exc)}",
+            "error_type": type(exc).__name__,
+            "traceback": error_traceback.split('\n')[-10:]  # Last 10 lines of traceback
+        }
+    )
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,

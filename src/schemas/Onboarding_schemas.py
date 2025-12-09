@@ -158,7 +158,6 @@ class EducationResponse(EducationBase):
 class DocumentsBase(BaseModel):
     employee_id: str
     document_name: str
-    file_name: str
     category: str
     upload_date: date
     status: str

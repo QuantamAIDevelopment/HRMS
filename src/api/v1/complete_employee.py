@@ -25,6 +25,17 @@ import string
 import json
 import os
 
+def safe_decode_binary(data):
+    """Safely decode binary data to string"""
+    if not data:
+        return None
+    try:
+        if isinstance(data, memoryview):
+            data = data.tobytes()
+        return data.decode('utf-8')
+    except (UnicodeDecodeError, AttributeError):
+        return None
+
 router = APIRouter()
 
 
@@ -78,6 +89,17 @@ def get_onboarding_statistics(db: Session = Depends(get_db)):
         "active_employees": active_employees,
         "inactive_employees": total_employees - active_employees
     }
+
+@router.get("/test-db")
+def test_database_connection(db: Session = Depends(get_db)):
+    """Simple test endpoint to check database connectivity"""
+    try:
+        # Simple query to test database
+        count = db.execute("SELECT 1").fetchone()
+        return {"status": "Database connection successful", "test_result": count[0]}
+    except Exception as e:
+        logger.error(f"Database test failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/complete-employee/{employee_id}")
 def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
@@ -156,7 +178,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
             "document_id": doc.document_id,
             "document_name": doc.document_name,
             "category": doc.category,
-            "file_name": doc.file_name,
+            "files": safe_decode_binary(doc.files),
             "upload_date": str(doc.upload_date),
             "status": doc.status
         } for doc in documents],
@@ -301,6 +323,7 @@ async def create_complete_employee(
         
         # Handle file uploads and create document list
         doc_list = []
+        logger.info(f"Processing documents: document_name={document_name}, files={len(files) if files else 0}")
         if document_name:
             for i in range(len(document_name)):
                 # Check if document name and category exist
@@ -312,22 +335,29 @@ async def create_complete_employee(
                     if (files and i < len(files) and files[i] and 
                         files[i].filename and files[i].filename.strip()):
                         
-                        import base64
-                        content = await files[i].read()
-                        file_base64 = base64.b64encode(content).decode('utf-8')
-                        
-                        doc_list.append({
-                            "document_name": document_name[i].strip(),
-                            "category": category[i].strip(),
-                            "file_name": files[i].filename
-                        })
+                        try:
+                            import base64
+                            content = await files[i].read()
+                            logger.info(f"File {i} read successfully, size: {len(content)}")
+                            file_base64 = base64.b64encode(content).decode('utf-8')
+                            logger.info(f"File {i} converted to base64, length: {len(file_base64)}")
+                            
+                            doc_list.append({
+                                "document_name": document_name[i].strip(),
+                                "category": category[i].strip(),
+                                "file_data": file_base64
+                            })
+                        except Exception as file_error:
+                            logger.error(f"Error processing file {i}: {str(file_error)}")
+                            raise
                     else:
                         # Add document entry without file (empty value sent)
                         doc_list.append({
                             "document_name": document_name[i].strip(),
                             "category": category[i].strip(),
-                            "file_name": "No file uploaded"
+                            "file_data": None
                         })
+        logger.info(f"Document list created: {len(doc_list)} documents")
         
         asset_list = []
         # Single Asset Entry
@@ -468,14 +498,14 @@ async def create_complete_employee(
 
         # 6. Create Document records
         for doc in doc_list:
-            file_name = doc.get("file_name")
+            file_data = doc.get("file_data")
             document = EmployeeDocuments(
                 employee_id=employee_id,
                 document_name=doc.get("document_name"),
                 category=doc.get("category"),
-                file_name=file_name,
+                files=file_data.encode('utf-8') if file_data else None,
                 upload_date=datetime.now().date(),
-                status="Uploaded" if file_name and file_name != "No file uploaded" else "Pending"
+                status="Uploaded" if file_data else "Pending"
             )
             db.add(document)
 
@@ -629,7 +659,7 @@ HR Team"""
                     "document_id": doc.document_id,
                     "document_name": doc.document_name,
                     "category": doc.category,
-                    "file_name": doc.file_name,
+                    "files": safe_decode_binary(doc.files),
                     "upload_date": str(doc.upload_date),
                     "status": doc.status
                 } for doc in created_documents],

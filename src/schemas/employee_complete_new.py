@@ -22,7 +22,6 @@ class EducationQualificationCreate(BaseModel):
 class DocumentCreate(BaseModel):
     document_name: str
     category: str
-    file_name: str
 
 class AssetAssignCreate(BaseModel):
     asset_type: str
