@@ -38,6 +38,8 @@ class Employee(Base):
     employee_type = Column(String(50))
     profile_photo = Column(String(255))
     annual_leaves = Column(Integer, server_default='21')
+    annual_ctc = Column(Numeric(12, 2))
+    active_status = Column(String(20), server_default='Active')
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     __table_args__ = (

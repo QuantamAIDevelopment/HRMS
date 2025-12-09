@@ -11,7 +11,6 @@ class JobTitle(Base):
     job_title = Column(String(100), nullable=False)
     job_description = Column(String(255))
     department = Column(String(30), nullable=False)
-    level = Column(String(50), nullable=False, server_default='Mid-Level')
     salary_min = Column(Integer)
     salary_max = Column(Integer)
     employees = Column(Integer, server_default='0')
