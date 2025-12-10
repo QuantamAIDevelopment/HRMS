@@ -12,7 +12,7 @@ from ...schemas.timesheet_status import TimesheetStatusUpdate
 
 router = APIRouter()
 
-@router.post("/", response_model=TimesheetResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/")
 def create_timesheet(timesheet: TimesheetCreate, db: Session = Depends(get_db)):
     try:
         # Check if employee exists
@@ -26,6 +26,24 @@ def create_timesheet(timesheet: TimesheetCreate, db: Session = Depends(get_db)):
                 status_code=404,
                 detail=f"Employee {timesheet.employee_id} not found"
             )
+        
+        # Check if employee is on approved leave for the entry date
+        leave_check = db.execute(
+            text("""
+                SELECT leave_id FROM leave_management 
+                WHERE employee_id = :emp_id 
+                AND status = 'Approved' 
+                AND :entry_date BETWEEN start_date AND end_date
+            """),
+            {"emp_id": timesheet.employee_id, "entry_date": timesheet.entry_date}
+        ).fetchone()
+        
+        if leave_check:
+            return {
+                "success": False,
+                "message": "Cannot create timesheet for approved leave date",
+                "blocked": True
+            }
         
         # Get employee's reporting manager
         manager_query = db.execute(
