@@ -1,35 +1,29 @@
 from .base import Base
 from .user import User
-from .employee import Employee
-from .leave import Leave
-from .asset import Asset
-from .attendance import Attendance
-
-__all__ = [
-    "Base",
-    "User",
-    "Employee",
-    "Leave",
-    "Asset",
-    "Attendance"
-]
-
-from .base import Base
 from .job_title import JobTitle
 from .timesheet import Timesheet
 from .shift import Shift
 from .off_boarding import OffBoarding
 from .events_holidays import EventsHolidays
 from .policy import Policy
+from .leave import Leave
 from .hrms_models import (
-    Department, Employee, EmployeePersonalDetail as EmployeePersonal, 
-    Attendance, EmployeeExpense as Expense, TimeEntry, ShiftMaster, 
-    LeaveManagement, ComplianceDocument, EmployeeDocument, 
-    EmployeePersonalDetail as EmployeePersonalDetails, BankDetail as BankDetails
+    Attendance, Expense, TimeEntry, 
+    LeaveManagement, ComplianceDocument
 )
+from .Employee_models import (
+    Employee, Department, ShiftMaster, Assets, EmployeePersonalDetailsModel as EmployeePersonalDetails, 
+    BankDetails, EducationalQualifications, 
+    EmployeeDocuments, EmployeeWorkExperience
+)
+# Remove conflicting employee.py import - use Employee_models.py only
+
+# Create alias for backward compatibility
+EmployeePersonal = EmployeePersonalDetails
 
 __all__ = [
     "Base",
+    "User",
     "Employee",
     "Department", 
     "Policy",
@@ -39,5 +33,15 @@ __all__ = [
     "Expense",
     "TimeEntry",
     "ShiftMaster",
-    "LeaveManagement"
+    "LeaveManagement",
+    "Leave",
+    "Assets",
+    "EmployeeDocuments",
+    "EmployeePersonalDetails",
+    "BankDetails",
+    "JobTitle",
+    "Timesheet",
+    "Shift",
+    "OffBoarding",
+    "EventsHolidays"
 ]

@@ -1,4 +1,5 @@
 from sqlalchemy import Column, String, Integer, Date, DateTime, ForeignKey, Index
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .base import Base
 
@@ -20,6 +21,10 @@ class Employee(Base):
     annual_leaves = Column(Integer, server_default='21')
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+    
+    # Relationship
+    personal_details = relationship("EmployeePersonalDetails", back_populates="employee", uselist=False)
+    
     __table_args__ = (
         Index('idx_employees_department', 'department_id'),
         Index('idx_employees_shift', 'shift_id'),

@@ -8,9 +8,9 @@ class PolicyName(str, Enum):
     STANDARD = "Standard Policy"
     FLEXIBLE = "Flexible Policy"
  
-from ...models.session import get_db
-from ...services.policy_service import PoliciesService
-from ...schemas.policy import (
+from src.models.session import get_db
+from src.services.policy_service import PoliciesService
+from src.schemas.policy import (
     PolicyListRead, PolicyRead, PolicyCreate, PolicyUpdate, PolicyActivateResponse,
     StandardPolicyUpdate, FlexiblePolicyUpdate
 )

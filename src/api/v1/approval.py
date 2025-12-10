@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
 
-from ...models.session import get_db
-from ...models.employee_profile import ProfileEditRequest
+from src.models.session import get_db
+from src.models.employee_profile import ProfileEditRequest
 
 router = APIRouter()
 

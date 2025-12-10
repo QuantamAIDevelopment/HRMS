@@ -2,7 +2,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, or_, desc
 from typing import Optional, Tuple, List
 from datetime import date, timedelta
-from ..models.hrms_models import Employee, Department, LeaveManagement
+from ..models import Employee, Department
+from ..models.hrms_models import LeaveManagement
 from ..schemas.employee import EmployeeUpdate
 
 class EmployeeService:

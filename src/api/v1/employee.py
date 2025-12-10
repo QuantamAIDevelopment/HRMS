@@ -7,11 +7,13 @@ import json
 
 
 
-from ...models.session import get_db
-from ...models.employee_profile import EmployeeWorkExperience, ProfileEditRequest
-from ...models.hrms_models import Employee, EmployeePersonalDetail as EmployeePersonalDetails, BankDetail as BankDetails, EmployeeDocument
-from ...models.asset import Asset
-from ...schemas.profile import ProfileEditRequestCreate
+from src.models.session import get_db
+from src.models.employee_profile import EmployeeWorkExperience, ProfileEditRequest
+from src.models import Employee
+from src.models.Employee_models import BankDetails, EmployeeDocuments as EmployeeDocument
+from src.models.Employee_models import EmployeePersonalDetailsModel as EmployeePersonalDetails
+from src.models.asset import Asset
+from src.schemas.profile import ProfileEditRequestCreate
 
 router = APIRouter()
 
@@ -59,7 +61,7 @@ def request_assets_edit(employee_id: str, edit_request: ProfileEditRequestCreate
 
 @router.get("/employees/{employee_id}")
 def get_employee_complete(employee_id: str, db: Session = Depends(get_db)):
-    from ...models.hrms_models import Department, ShiftMaster
+    from src.models import Department, ShiftMaster
     
     employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
     
@@ -70,7 +72,7 @@ def get_employee_complete(employee_id: str, db: Session = Depends(get_db)):
     bank_details = db.query(BankDetails).filter(BankDetails.employee_id == employee_id).all()
     work_experience = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
     documents = db.query(EmployeeDocument).filter(EmployeeDocument.employee_id == employee_id).all()
-    assets = db.query(Asset).filter(Asset.assigned_employee_id == employee_id).all()
+    assets = db.query(Asset).filter(Asset.employee_id == employee_id).all()
     
     department = db.query(Department).filter(Department.department_id == employee.department_id).first() if employee.department_id else None
     shift = db.query(ShiftMaster).filter(ShiftMaster.shift_id == employee.shift_id).first() if employee.shift_id else None

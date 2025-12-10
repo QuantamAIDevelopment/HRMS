@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 import logging
 
-from ...models.session import get_db
-from ...services.dashboard_service import DashboardService
-from ...schemas.dashboard import DashboardResponse
+from src.models.session import get_db
+from src.services.dashboard_service import DashboardService
+from src.schemas.dashboard import DashboardResponse
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

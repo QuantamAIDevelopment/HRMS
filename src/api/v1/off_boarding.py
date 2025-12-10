@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
-from ...models.session import get_db
-from ...models.off_boarding import OffBoarding
-from ...schemas.off_boarding import OffBoardingCreate, OffBoardingResponse
+from src.models.session import get_db
+from src.models.off_boarding import OffBoarding
+from src.schemas.off_boarding import OffBoardingCreate, OffBoardingResponse
 
 router = APIRouter()
 

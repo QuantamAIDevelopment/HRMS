@@ -3,6 +3,7 @@ from .base import Base
 
 class Leave(Base):
     __tablename__ = "leave_management"
+    __table_args__ = {'extend_existing': True}
     
     leave_id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(String, nullable=False)

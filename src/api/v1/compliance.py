@@ -4,15 +4,15 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 import base64
 import io
-from ...models.session import get_db
-from ...models import ComplianceDocument
-from ...schemas.compliance_document import (
+from src.models.session import get_db
+from src.models import ComplianceDocument
+from src.schemas.compliance_document import (
     ComplianceDocumentCreate,
     ComplianceDocumentUpdate,
     ComplianceDocumentResponse,
     ComplianceDocumentDownload
 )
-from ...services.compliance_service import ComplianceService
+from src.services.compliance_service import ComplianceService
 
 router = APIRouter(prefix="/compliance", tags=["Compliance Documents"])
 

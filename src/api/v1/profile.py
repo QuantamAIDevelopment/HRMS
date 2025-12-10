@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from ...models.session import get_db
-from ...models.hrms_models import Department, ShiftMaster
+from src.models.session import get_db
+from src.models import Department, ShiftMaster
 
 router = APIRouter()
 

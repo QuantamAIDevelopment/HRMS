@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date, datetime, time
-from ...api.deps import get_db
-from ...models import Attendance
+from src.api.deps import get_db
+from src.models import Attendance
 
 router = APIRouter()
 

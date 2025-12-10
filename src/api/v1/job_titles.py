@@ -3,9 +3,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
 
-from ...models.session import get_db
-from ...models.job_title import JobTitle
-from ...schemas.job_title import JobTitleCreate, JobTitleResponse, JobTitleUpdate
+from src.models.session import get_db
+from src.models.job_title import JobTitle
+from src.schemas.job_title import JobTitleCreate, JobTitleResponse, JobTitleUpdate
 
 router = APIRouter()
 

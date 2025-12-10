@@ -3,10 +3,10 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List
 
-from ...models.session import get_db
-from ...models.shift import Shift
-from ...schemas.shift import ShiftResponse, ShiftUpdate
-from ...services.shift_service import ShiftService
+from src.models.session import get_db
+from src.models.shift import Shift
+from src.schemas.shift import ShiftResponse, ShiftUpdate
+from src.services.shift_service import ShiftService
 
 router = APIRouter()
 

@@ -4,9 +4,10 @@ from sqlalchemy import func, extract
 from typing import Optional
 from datetime import datetime, date
 from decimal import Decimal
-from ...models.session import get_db
-from ...models.hrms_models import Attendance, Employee, Department, PolicyMaster, LeaveManagement
-from ...schemas.attendance import AttendanceResponse, AttendanceRecord, AttendanceSummary, AttendanceBreakdown, DailyAttendanceRecord
+from src.models.session import get_db
+from src.models.hrms_models import Attendance, PolicyMaster, LeaveManagement
+from src.models import Employee, Department
+from src.schemas.attendance import AttendanceResponse, AttendanceRecord, AttendanceSummary, AttendanceBreakdown, DailyAttendanceRecord
 
 router = APIRouter()
 

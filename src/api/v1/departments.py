@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from ...models.session import get_db
-from ...services.employee_service import EmployeeService
-from ...schemas.employee import DepartmentResponse
+from src.models.session import get_db
+from src.services.employee_service import EmployeeService
+from src.schemas.employee import DepartmentResponse
 
 router = APIRouter(prefix="/departments", tags=["departments"])
 
