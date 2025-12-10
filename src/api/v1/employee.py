@@ -8,11 +8,12 @@ import json
 
 
 from src.models.session import get_db
-from src.models.employee_profile import EmployeeWorkExperience, ProfileEditRequest
+from src.models.Employee_models import EmployeeWorkExperience
+from src.models.employee_profile import ProfileEditRequest
 from src.models import Employee
 from src.models.Employee_models import BankDetails, EmployeeDocuments as EmployeeDocument
 from src.models.Employee_models import EmployeePersonalDetailsModel as EmployeePersonalDetails
-from src.models.asset import Asset
+from src.models.Employee_models import Assets as Asset
 from src.schemas.profile import ProfileEditRequestCreate
 
 router = APIRouter()

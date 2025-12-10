@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Date, Text, ForeignKey
 from sqlalchemy.sql import func
 from .base import Base
 
-class EmployeeWorkExperience(Base):
+class EmployeeWorkExperienceProfile(Base):
     __tablename__ = "employee_work_experience"
     __table_args__ = {'extend_existing': True}
     

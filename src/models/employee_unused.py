@@ -3,7 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .base import Base
 
-class Employee(Base):
+class EmployeeUnused(Base):
     __tablename__ = 'employees'
     employee_id = Column(String(50), primary_key=True)
     first_name = Column(String(50))

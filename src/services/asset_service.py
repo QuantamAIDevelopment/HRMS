@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from src.models.asset import Asset
+from src.models.Employee_models import Assets as Asset
 from src.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, AssetSummary
 from datetime import date
 

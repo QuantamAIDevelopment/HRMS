@@ -4,7 +4,7 @@ from typing import List, Optional
 from src.models.session import get_db
 from src.services.asset_service import AssetService
 from src.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, AssetSummary
-from src.models.asset import Asset
+from src.models.Employee_models import Assets as Asset
 
 router = APIRouter()
 

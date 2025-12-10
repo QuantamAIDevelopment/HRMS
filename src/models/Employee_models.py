@@ -4,7 +4,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from models.base import Base
+from .base import Base
 
 # ============================================================
 # 3. EMPLOYEES (MASTER TABLE)
@@ -67,13 +67,12 @@ class EmployeePersonalDetailsModel(Base):
     employee_phone = Column(String(20))
     employee_email = Column(String(100))
     employee_alternate_phone = Column(String(20))
-    employee_address = Column(String(150))
+    employee_address = Column(String(255))
     emergency_full_name = Column(String(50))
     emergency_relationship = Column(String(50))
     emergency_primary_phone = Column(String(20))
     emergency_alternate_phone = Column(String(20))
     emergency_address = Column(String(150))
-    employee_address = Column(String(255))
     city = Column(String(100))
     pincode = Column(String(20))
     country = Column(String(100))
@@ -126,11 +125,9 @@ class Assets(Base):
     serial_number = Column(String(50), unique=True, nullable=False)
     status = Column(String(50), default="Available")
     condition = Column(String(50), nullable=True)
-    employee_id = Column(String(50), ForeignKey("employees.employee_id"), nullable=True)
-    assigned_to = Column(String(50), nullable=True)
+    assigned_employee_id = Column(String(50), ForeignKey("employees.employee_id"), nullable=True)
     purchase_date = Column(Date, nullable=True)
     value = Column(Numeric(12, 2), nullable=True)
-    note = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
@@ -170,6 +167,7 @@ class EmployeeDocuments(Base):
     document_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="CASCADE"))
     document_name = Column(String(50), nullable=False)
+    file_name = Column(String(255), nullable=False)
     category = Column(String(50), nullable=False)
     upload_date = Column(Date, nullable=False)
     status = Column(String(50), default="Pending")
@@ -220,7 +218,7 @@ class EmployeeWorkExperience(Base):
     company_name = Column(String(200), nullable=True)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date)
-    description = Column(Text)
+    responsibilities = Column(Text)
 
     created_at = Column(DateTime, server_default=func.now())
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())

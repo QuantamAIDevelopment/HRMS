@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, DateTime, Date, Text, Numeric
 from datetime import datetime
 from .base import Base
 
-class Asset(Base):
+class AssetAlternate(Base):
     __tablename__ = "assets"
     __table_args__ = {'extend_existing': True}
     

@@ -14,6 +14,7 @@ class User(Base):
     full_name = Column(String, nullable=False)
     role = Column(String, nullable=False, default="EMPLOYEE")
     is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow, server_default=func.now())
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=func.now(), server_default=func.now())
     

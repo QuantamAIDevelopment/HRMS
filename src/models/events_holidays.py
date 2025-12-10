@@ -7,10 +7,9 @@ class EventsHolidays(Base):
     __table_args__ = {'extend_existing': True}
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    title = Column(String(150), nullable=False)
-    subtitle = Column(String(200))
-    type = Column(String(50), nullable=False)  # Event / Public Holiday / Optional Holiday
-    event_date = Column(Date, nullable=False)
-    location = Column(String(100), default='N/A')
+    name = Column(String(255), nullable=False)
+    date = Column(Date, nullable=False)
+    type = Column(String(100))
+    description = Column(String, nullable=True)
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())

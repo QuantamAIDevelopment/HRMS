@@ -9,11 +9,14 @@ passlib[bcrypt]
 python-multipart
 pytest
 psycopg2-binary
+asyncpg
 factory-boy
 black
 isort
 flake8
 ruff
 email-validator
+pydantic[email]
 httpx
 requests
+bcrypt

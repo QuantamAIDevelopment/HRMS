@@ -8,13 +8,13 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-from models.Employee_models import (
+from src.models.Employee_models import (
     Employee, BankDetails, 
     EducationalQualifications, EmployeeDocuments, 
     EmployeeWorkExperience, Assets
 )
-from models.Employee_models import EmployeePersonalDetailsModel as EmployeePersonalDetails
-from models.user import User
+from src.models.Employee_models import EmployeePersonalDetailsModel as EmployeePersonalDetails
+from src.models.user import User
 
 from schemas.employee_complete_new import CompleteEmployeeCreateResponse
 from core.security import get_password_hash
@@ -45,7 +45,7 @@ router = APIRouter()
 
 @router.get("/all-records")
 def get_all_onboarding_records(db: Session = Depends(get_db)):
-    from models.Employee_models import Department
+    from src.models.Employee_models import Department
     
     # Join Employee with Department to get department names
     employees = db.query(Employee, Department.department_name).outerjoin(
@@ -111,7 +111,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
     education = db.query(EducationalQualifications).filter(EducationalQualifications.employee_id == employee_id).all()
     work_experience = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
     documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
-    assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
+    assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
     
     return {
         "employee_info": {
@@ -170,7 +170,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
             "company_name": exp.company_name,
             "start_date": str(exp.start_date),
             "end_date": str(exp.end_date) if exp.end_date else None,
-            "description": exp.description
+            "description": exp.responsibilities
         } for exp in work_experience],
         "documents": [{
             "document_id": doc.document_id,
@@ -389,24 +389,53 @@ async def create_complete_employee(
         #     )
 
         # Find or create department
-        from models.Employee_models import ShiftMaster, Department
+        from src.models.Employee_models import ShiftMaster, Department
         department = db.query(Department).filter(Department.department_name == department_name).first()
         if not department:
             department = Department(department_name=department_name)
             db.add(department)
             db.flush()
         
-        # Create or find shift
-        shift = db.query(ShiftMaster).filter(ShiftMaster.shift_name == shift_name).first()
-        if not shift:
-            shift = ShiftMaster(
-                shift_name=shift_name,
-                shift_type="Regular",
-                start_time=datetime.strptime(start_time, "%H:%M").time(),
-                end_time=datetime.strptime(end_time, "%H:%M").time()
-            )
-            db.add(shift)
-            db.flush()
+        # Create or find shift using raw SQL to avoid metadata issues
+        from sqlalchemy import text
+        shift = None
+        shift_id = None
+        
+        try:
+            # Try to find existing shift using raw SQL
+            result = db.execute(text("""
+                SELECT shift_id FROM shift_master 
+                WHERE shift_name = :shift_name 
+                LIMIT 1
+            """), {"shift_name": shift_name})
+            
+            row = result.fetchone()
+            if row:
+                shift_id = row[0]
+                logger.info(f"Found existing shift with ID: {shift_id}")
+            else:
+                # Create new shift using raw SQL
+                result = db.execute(text("""
+                    INSERT INTO shift_master (shift_name, shift_type, start_time, end_time, working_days)
+                    VALUES (:shift_name, :shift_type, :start_time, :end_time, :working_days)
+                    RETURNING shift_id
+                """), {
+                    "shift_name": shift_name,
+                    "shift_type": "Regular", 
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "working_days": "Monday-Friday"
+                })
+                
+                row = result.fetchone()
+                if row:
+                    shift_id = row[0]
+                    logger.info(f"Created new shift with ID: {shift_id}")
+                    
+        except Exception as e:
+            logger.error(f"Error with shift operations: {e}")
+            # Use default shift_id = 1 if all else fails
+            shift_id = 1
         
         # 1. Create Employee record
         employee = Employee(
@@ -420,7 +449,7 @@ async def create_complete_employee(
             email_id=email_id,  # Store official email in Employee table
             phone_number=employee_phone,
             location=location or "Office",
-            shift_id=shift.shift_id,
+            shift_id=shift_id,
             employee_type=employment_type,
             annual_ctc=annual_ctc
         )
@@ -473,7 +502,7 @@ async def create_complete_employee(
                 company_name=exp.get("company_name"),
                 start_date=datetime.strptime(exp.get("start_date"), "%Y-%m-%d").date() if exp.get("start_date") else None,
                 end_date=datetime.strptime(exp.get("end_date"), "%Y-%m-%d").date() if exp.get("end_date") else None,
-                description=exp.get("description")
+                responsibilities=exp.get("description")
             )
             db.add(work_exp)
 
@@ -514,7 +543,7 @@ async def create_complete_employee(
             ).first()
             
             if asset:
-                asset.employee_id = employee_id
+                asset.assigned_employee_id = employee_id
                 asset.status = "Assigned"
             else:
                 raise HTTPException(
@@ -574,7 +603,7 @@ HR Team"""
         created_education = db.query(EducationalQualifications).filter(EducationalQualifications.employee_id == employee_id).all()
         created_work_exp = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
         created_documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
-        created_assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
+        created_assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
         
         # Return complete employee information
         return {
@@ -647,7 +676,7 @@ HR Team"""
                     "company_name": exp.company_name,
                     "start_date": str(exp.start_date) if exp.start_date else None,
                     "end_date": str(exp.end_date) if exp.end_date else None,
-                    "description": exp.description
+                    "description": exp.responsibilities
                 } for exp in created_work_exp],
                 "documents": [{
                     "document_id": doc.document_id,

@@ -22,32 +22,10 @@ from .base import Base
 
 
 # ============================================================
-# 11. SHIFT MASTER
+# SHIFT MASTER & DEPARTMENTS - USE FROM Employee_models.py
 # ============================================================
-
-class ShiftMaster(Base):
-    __tablename__ = "shift_master"
-    __table_args__ = {'extend_existing': True}
-
-    shift_id = Column(Integer, primary_key=True, autoincrement=True)
-    shift_name = Column(String(150), nullable=False)
-    shift_type = Column(String(100), nullable=False)
-    start_time = Column(Time, nullable=False)
-    end_time = Column(Time, nullable=False)
-    working_days = Column(String(200), default="Monday-Friday")
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
-
-# ============================================================
-# DEPARTMENTS TABLE
-# ============================================================
-
-class Department(Base):
-    __tablename__ = "departments"
-    __table_args__ = {'extend_existing': True}
-    
-    department_id = Column(Integer, primary_key=True, autoincrement=True)
-    department_name = Column(String(100), nullable=False, unique=True)
+# Removed duplicate definitions to avoid SQLAlchemy registry conflicts
+# Use ShiftMaster and Department from Employee_models.py instead
 
 # EmployeeWorkExperience - REMOVED TO AVOID CONFLICTS
 # Use EmployeeWorkExperience from Employee_models.py instead

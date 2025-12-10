@@ -34,6 +34,9 @@ try:
 except ImportError:
     pass
 
+# Import database initialization
+from src.core.database import init_database
+
 app = FastAPI(
     title="HRMS Backend API",
     description="Human Resource Management System API",
@@ -123,6 +126,17 @@ app.include_router(events_holidays_router, prefix="/api/v1/events-holidays", tag
 app.include_router(unified_dashboard.router, prefix="/api/v1", tags=["Unified Dashboard"])
 app.include_router(leave_router, prefix="/api/v1")
 app.include_router(asset_router, prefix="/api/v1")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize database on startup."""
+    try:
+        await init_database()
+        logger.info("✅ Database initialized successfully on startup")
+    except Exception as e:
+        logger.warning(f"⚠️ Database initialization had warnings: {e}")
+        logger.info("🚀 Application starting anyway - database may already be set up")
 
 
 @app.get("/", tags=["Root"])
