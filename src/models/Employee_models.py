@@ -4,13 +4,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from models.base import Base
+from .base import BaseModel, Base
 
 # ============================================================
 # 3. EMPLOYEES (MASTER TABLE)
 # ============================================================
 
-class Employee(Base):
+class Employee(BaseModel):
     __tablename__ = "employees"
 
     employee_id = Column(String(50), primary_key=True)
@@ -27,6 +27,7 @@ class Employee(Base):
     shift_id = Column(Integer, nullable=False)
     employment_type = Column(String(50), nullable=False)
     annual_ctc = Column(String(50), default="0")
+    annual_leaves = Column(Integer, default=0)
     status = Column(String(50), default="inprocess")
     
     profile_photo = Column(String(255))
@@ -54,7 +55,7 @@ class Employee(Base):
 # 4. EMPLOYEE PERSONAL DETAILS
 # ============================================================
 
-class EmployeePersonalDetails(Base):
+class EmployeePersonalDetails(BaseModel):
     __tablename__ = "employee_personal_details"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -67,13 +68,12 @@ class EmployeePersonalDetails(Base):
     employee_phone = Column(String(20))
     employee_email = Column(String(100))
     employee_alternate_phone = Column(String(20))
-    employee_address = Column(String(150))
+    employee_address = Column(String(255))
     emergency_full_name = Column(String(50))
     emergency_relationship = Column(String(50))
     emergency_primary_phone = Column(String(20))
     emergency_alternate_phone = Column(String(20))
     emergency_address = Column(String(150))
-    employee_address = Column(String(255))
     city = Column(String(100))
     pincode = Column(String(20))
     country = Column(String(100))
@@ -106,6 +106,7 @@ class BankDetails(Base):
 
     __table_args__ = (
         CheckConstraint("account_type IN ('Savings','Current')", name="check_account_type"),
+        {'extend_existing': True}
     )
 
     employee = relationship("Employee", back_populates="bank_details")
@@ -115,14 +116,15 @@ class BankDetails(Base):
 # 6. ASSETS
 # ============================================================
 
-class Assets(Base):
+class Assets(BaseModel):
     __tablename__ = "assets"
 
     asset_id = Column(Integer, primary_key=True, autoincrement=True)
     serial_number = Column(String(50), unique=True)
     asset_name = Column(String(50), nullable=False)
     asset_type = Column(String(50), nullable=False)
-    assigned_employee_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="SET NULL"))
+    employee_id = Column(String, nullable=True)
+    assigned_to = Column(String, nullable=True)
     status = Column(String(50), default="Available")
     condition = Column(String(50), default="Good")
     purchase_date = Column(Date)
@@ -142,7 +144,7 @@ class Assets(Base):
 # 8. EDUCATIONAL QUALIFICATIONS
 # ============================================================
 
-class EducationalQualifications(Base):
+class EducationalQualifications(BaseModel):
     __tablename__ = "educational_qualifications"
 
     edu_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -165,7 +167,7 @@ class EducationalQualifications(Base):
 # 9. EMPLOYEE DOCUMENTS
 # ============================================================
 
-class EmployeeDocuments(Base):
+class EmployeeDocuments(BaseModel):
     __tablename__ = "employee_documents"
 
     document_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -187,7 +189,7 @@ class EmployeeDocuments(Base):
 # 11. SHIFT MASTER
 # ============================================================
 
-class ShiftMaster(Base):
+class ShiftMaster(BaseModel):
     __tablename__ = "shift_master"
 
     shift_id = Column(Integer, primary_key=True, autoincrement=True)
@@ -203,14 +205,15 @@ class ShiftMaster(Base):
 # DEPARTMENTS TABLE
 # ============================================================
 
-class Department(Base):
+class Department(BaseModel):
     __tablename__ = "departments"
     
     department_id = Column(Integer, primary_key=True, autoincrement=True)
     department_name = Column(String(100), nullable=False, unique=True)
 
-class EmployeeWorkExperience(Base):
+class EmployeeWorkExperience(BaseModel):
     __tablename__ = "employee_work_experience"
+    __table_args__ = {'extend_existing': True}
 
     experience_id = Column(Integer, primary_key=True, autoincrement=True)
     employee_id = Column(String(50), ForeignKey("employees.employee_id", ondelete="CASCADE"), nullable=False)

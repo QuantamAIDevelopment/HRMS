@@ -1,10 +1,9 @@
 from sqlalchemy import Column, String, Integer, DateTime, Numeric, Text, CheckConstraint, ForeignKey, Index, JSON
 from sqlalchemy.sql import func
-from models.base import Base
+from .base import BaseModel
 
-class PayrollSetup(Base):
+class PayrollSetup(BaseModel):
     __tablename__ = "payroll_setup"
-
     payroll_id = Column(Integer, primary_key=True, index=True)
     employee_id = Column(String(50), nullable=False, index=True)
     designation = Column(String(100), nullable=False)
@@ -29,8 +28,6 @@ class PayrollSetup(Base):
     professional_tax_type = Column(String(50))
     salary_components = Column(JSON, default=dict) # Store earnings + deductions as JSON
     organization_name = Column(String(100))
-    created_at = Column(DateTime, server_default=func.now(), index=True)
-    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
     
     __table_args__ = (
         Index('idx_employee_month', 'employee_id', 'month'),

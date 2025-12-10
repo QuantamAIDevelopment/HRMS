@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.expense import Expense
-from schemas.expense import ExpenseCreate
+from src.models.expense import Expense
+from src.schemas.expense import ExpenseCreate
 from datetime import datetime
 
 class ExpenseService:
@@ -30,7 +30,7 @@ class ExpenseService:
     
     @staticmethod
     def get_expense_by_id(db: Session, expense_id: int):
-        return db.query(Expense).filter(Expense.expense_id == expense_id).first()
+        return db.query(Expense).filter(Expense.id == expense_id).first()
     
     @staticmethod
     def get_expenses_by_employee(db: Session, employee_id: str):
@@ -39,7 +39,7 @@ class ExpenseService:
     @staticmethod
     def update_expense_status(db: Session, expense_id: str, employee_id: str, status: str):
         expense = db.query(Expense).filter(
-            Expense.expense_id == int(expense_id),
+            Expense.id == int(expense_id),
             Expense.employee_id == employee_id
         ).first()
         if expense:

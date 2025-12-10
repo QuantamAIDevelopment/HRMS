@@ -10,16 +10,26 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 import logging
 
-# Set up logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+# Import all routers
 from api.v1.auth import router as auth_router
 from api.v1.expenses import router as expense_router
 from api.v1.salary import router as salary_router
 from api.v1.file_upload import router as file_upload_router
 from api.v1.complete_employee import router as complete_employee_router
+from .api.v1 import compliance, attendance, employees, departments, standard_policy, unified_dashboard, leave_router, asset_router
+from .api.v1.job_titles import router as job_title_router
+from .api.v1.timesheet import router as timesheet_router
+from .api.v1.employee import router as employee_router
+from .api.v1.profile import router as profile_router
+from .api.v1.approval import router as approval_router
+from .api.v1.shifts import router as shifts_router
+from .api.v1.off_boarding import router as off_boarding_router
+from .api.v1.events_holidays import router as events_holidays_router
+from .core.logging_config import setup_logging
 
+# Setup logging
+setup_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="HRMS Backend API",
@@ -37,7 +47,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger.error(f"Validation error on {request.url}: {errors}")
     
     if any(e.get("type") == "json_invalid" for e in errors):
-        error_msg = errors[0].get("ctx", {}).get("error", "JSON decode error")
+        error_msg = str(errors[0].get("ctx", {}).get("error", "JSON decode error"))
         return JSONResponse(
             status_code=400,
             content={
@@ -50,7 +60,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     return JSONResponse(
         status_code=422,
         content={
-            "detail": errors,
+            "detail": str(errors),
             "message": "Validation failed",
             "missing_fields": [error["loc"][-1] for error in errors if error["type"] == "missing"]
         }
@@ -88,7 +98,7 @@ async def log_requests(request: Request, call_next):
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=False,
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -99,21 +109,32 @@ app.include_router(expense_router, prefix="/api/v1", tags=["expenses"])
 app.include_router(salary_router, prefix="/api/v1", tags=["salary"])
 app.include_router(file_upload_router, prefix="/api/v1", tags=["file-upload"])
 app.include_router(complete_employee_router, prefix="/api/v1", tags=["complete-employee"])
-
+app.include_router(employees.router, prefix="/api/v1")
+app.include_router(departments.router, prefix="/api/v1")
+app.include_router(compliance.router, prefix="/api/v1/compliance", tags=["Compliance Documents"])
+app.include_router(attendance.router, prefix="/api/v1/attendance_tracking", tags=["Attendance Tracking"])
+app.include_router(standard_policy.router)
+app.include_router(job_title_router, prefix="/api/v1/job-titles", tags=["job-titles"])
+app.include_router(timesheet_router, prefix="/api/v1/timesheets", tags=["timesheets"])
+app.include_router(employee_router, prefix="/api/v1/employees", tags=["employees"])
+app.include_router(profile_router, prefix="/api/v1/profile", tags=["profile"])
+app.include_router(approval_router, prefix="/api/v1/approval", tags=["approval"])
+app.include_router(shifts_router, prefix="/api/v1/shifts", tags=["shifts"])
+app.include_router(off_boarding_router, prefix="/api/v1/off-boarding", tags=["off-boarding"])
+app.include_router(events_holidays_router, prefix="/api/v1/events-holidays", tags=["events-holidays"])
+app.include_router(unified_dashboard.router, prefix="/api/v1", tags=["Unified Dashboard"])
+app.include_router(leave_router, prefix="/api/v1")
+app.include_router(asset_router, prefix="/api/v1")
 
 @app.get("/", tags=["Root"])
 def read_root():
     logger.info("Root endpoint hit")
     return {"message": "HRMS Backend API is running", "docs": "/docs"}
 
-@app.get("/health", tags=["Root"])
+@app.get("/health")
 def health_check():
     return {"status": "healthy"}
 
-
-
-
-
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
 from sqlalchemy.orm import Session
-from api.deps import get_db
-from schemas.expense import ExpenseResponse, ExpenseStatusResponse
-from services.expense_service import ExpenseService
+from src.api.deps import get_db
+from src.schemas.expense import ExpenseResponse, ExpenseStatusResponse
+from src.services.expense_service import ExpenseService
 from decimal import Decimal
 from datetime import date
 from pydantic import BaseModel
@@ -51,44 +51,24 @@ def create_expense_request(
         import base64
         receipt_base64 = None
         
-        print(f"DEBUG: receipt_file = {receipt_file}")
-        print(f"DEBUG: receipt_file.filename = {receipt_file.filename if receipt_file else 'None'}")
-        
         if receipt_file and receipt_file.filename:
             file_content = receipt_file.file.read()
-            print(f"DEBUG: file_content length = {len(file_content)}")
             if len(file_content) > 0:
                 receipt_base64 = base64.b64encode(file_content).decode('utf-8')
-                print(f"DEBUG: receipt_base64 length = {len(receipt_base64)}")
-                print(f"DEBUG: receipt_base64 first 50 chars = {receipt_base64[:50]}")
             else:
-                print("DEBUG: File content is empty")
                 receipt_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
         else:
-            print("DEBUG: No file uploaded, using test base64")
             receipt_base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
         
-        print(f"DEBUG: Calling service with receipt_base64 = {receipt_base64 is not None}")
-        print(f"DEBUG: receipt_base64 type = {type(receipt_base64)}")
-        
-        # Ensure receipt_base64 is a string
         if receipt_base64 and not isinstance(receipt_base64, str):
             receipt_base64 = str(receipt_base64)
         
         expense = ExpenseService.create_expense_with_file(
             db, employee_id, category, description, amount, expense_date, receipt_base64
         )
-        print(f"DEBUG: Service returned expense.receipt_url = {expense.receipt_url}")
-        print(f"DEBUG: expense.receipt_url type = {type(expense.receipt_url)}")
         
-        # Force refresh from database to check what was actually stored
         db.refresh(expense)
-        print(f"DEBUG: After refresh - expense.receipt_url type = {type(expense.receipt_url)}")
-        print(f"DEBUG: After refresh - first 50 chars = {str(expense.receipt_url)[:50] if expense.receipt_url else 'None'}")
-        
         converted_receipt_url = convert_receipt_url(expense.receipt_url)
-        print(f"DEBUG: converted_receipt_url = {converted_receipt_url is not None}")
-        print(f"DEBUG: converted_receipt_url first 50 chars = {converted_receipt_url[:50] if converted_receipt_url else 'None'}")
         
         return {
             "employee_id": expense.employee_id,
@@ -97,7 +77,7 @@ def create_expense_request(
             "amount": float(expense.amount),
             "expense_date": expense.expense_date.strftime('%Y-%m-%d'),
             "receipt_url": converted_receipt_url,
-            "expense_id": expense.expense_id,
+            "expense_id": expense.id,
             "status": expense.status,
             "created_at": expense.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             "updated_at": expense.updated_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -116,15 +96,13 @@ def get_all_expenses(db: Session = Depends(get_db)):
             "amount": float(expense.amount),
             "expense_date": expense.expense_date.strftime('%Y-%m-%d'),
             "receipt_url": convert_receipt_url(expense.receipt_url),
-            "expense_id": expense.expense_id,
+            "expense_id": expense.id,
             "status": expense.status,
             "created_at": expense.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             "updated_at": expense.updated_at.strftime('%Y-%m-%d %H:%M:%S')
         } for expense in expenses]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching expenses: {str(e)}")
-
-
 
 @router.get("/employee-expenses/employee/{employee_id}")
 def get_employee_expenses(employee_id: str, db: Session = Depends(get_db)):
@@ -137,7 +115,7 @@ def get_employee_expenses(employee_id: str, db: Session = Depends(get_db)):
             "amount": float(expense.amount),
             "expense_date": expense.expense_date.strftime('%Y-%m-%d'),
             "receipt_url": convert_receipt_url(expense.receipt_url),
-            "expense_id": expense.expense_id,
+            "expense_id": expense.id,
             "status": expense.status,
             "created_at": expense.created_at.strftime('%Y-%m-%d %H:%M:%S'),
             "updated_at": expense.updated_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -165,7 +143,7 @@ def update_expense_status(
                 "amount": float(expense.amount),
                 "expense_date": expense.expense_date.strftime('%Y-%m-%d'),
                 "receipt_url": convert_receipt_url(expense.receipt_url),
-                "expense_id": expense.expense_id,
+                "expense_id": expense.id,
                 "status": expense.status,
                 "created_at": expense.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 "updated_at": expense.updated_at.strftime('%Y-%m-%d %H:%M:%S')
@@ -173,8 +151,6 @@ def update_expense_status(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error updating expense status: {str(e)}")
-
-
 
 @router.get("/expenses/status")
 def get_expense_status(db: Session = Depends(get_db)):
@@ -193,11 +169,10 @@ def debug_receipt_url(expense_id: int, db: Session = Depends(get_db)):
     if not expense:
         raise HTTPException(status_code=404, detail="Expense not found")
     
-    # Convert receipt_url to string for safe serialization
     receipt_url_str = convert_receipt_url(expense.receipt_url)
     
     return {
-        "expense_id": expense.expense_id,
+        "expense_id": expense.id,
         "receipt_url_type": type(expense.receipt_url).__name__,
         "receipt_url_length": len(expense.receipt_url) if expense.receipt_url else 0,
         "is_string": isinstance(expense.receipt_url, str),
@@ -205,6 +180,3 @@ def debug_receipt_url(expense_id: int, db: Session = Depends(get_db)):
         "is_memoryview": isinstance(expense.receipt_url, memoryview),
         "receipt_url_preview": receipt_url_str
     }
-
-
-

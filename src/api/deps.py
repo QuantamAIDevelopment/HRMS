@@ -1,8 +1,8 @@
 from fastapi import Depends
 from sqlalchemy.orm import Session
-from models.session import get_db
-from core.security import get_current_user_email
-from models.user import User
+from src.models.session import get_db
+from src.core.security import get_current_user_email
+from src.models.user import User
 
 def get_current_user(db: Session = Depends(get_db), email: str = Depends(get_current_user_email)):
     user = db.query(User).filter(User.email == email).first()

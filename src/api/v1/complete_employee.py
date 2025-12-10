@@ -8,10 +8,10 @@ import logging
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-from models.Employee_models import (
-    Employee, EmployeePersonalDetails, BankDetails, 
-    EducationalQualifications, EmployeeDocuments, 
-    EmployeeWorkExperience, Assets
+from src.models.hrms_models import (
+    Employee, EmployeePersonalDetail as EmployeePersonalDetails, BankDetail as BankDetails, 
+    EducationalQualification as EducationalQualifications, EmployeeDocument as EmployeeDocuments, 
+    Asset as Assets, EmployeeWorkExperience
 )
 from models.user import User
 
@@ -44,7 +44,7 @@ router = APIRouter()
 
 @router.get("/all-records")
 def get_all_onboarding_records(db: Session = Depends(get_db)):
-    from models.Employee_models import Department
+    from src.models.hrms_models import Department
     
     # Join Employee with Department to get department names
     employees = db.query(Employee, Department.department_name).outerjoin(
@@ -271,7 +271,7 @@ async def create_complete_employee(
     # Document Fields (Arrays with file upload, can be empty)
     document_name: List[str] = Form([]),
     category: List[str] = Form([]),
-    files: List[UploadFile] = File(default=[], description="Upload files: images (JPG, PNG), documents (PDF, DOC)"),
+    files: List[UploadFile] = File(default=None, description="Upload files: images (JPG, PNG), documents (PDF, DOC)"),
     
     # Asset Fields (Single entry only) - Make completely optional
     asset_type: Optional[str] = Form(None),
@@ -323,7 +323,8 @@ async def create_complete_employee(
         
         # Handle file uploads and create document list
         doc_list = []
-        logger.info(f"Processing documents: document_name={document_name}, files={len(files) if files else 0}")
+        files_list = files if files else []
+        logger.info(f"Processing documents: document_name={document_name}, files={len(files_list)}")
         if document_name:
             for i in range(len(document_name)):
                 # Check if document name and category exist
@@ -332,12 +333,12 @@ async def create_complete_employee(
                     category[i] and category[i].strip()):
                     
                     # Check if file exists for this document
-                    if (files and i < len(files) and files[i] and 
-                        files[i].filename and files[i].filename.strip()):
+                    if (files_list and i < len(files_list) and files_list[i] and 
+                        files_list[i].filename and files_list[i].filename.strip()):
                         
                         try:
                             import base64
-                            content = await files[i].read()
+                            content = await files_list[i].read()
                             logger.info(f"File {i} read successfully, size: {len(content)}")
                             file_base64 = base64.b64encode(content).decode('utf-8')
                             logger.info(f"File {i} converted to base64, length: {len(file_base64)}")
@@ -392,7 +393,7 @@ async def create_complete_employee(
         #     )
 
         # Find or create department
-        from models.Employee_models import ShiftMaster, Department
+        from src.models.hrms_models import ShiftMaster, Department
         department = db.query(Department).filter(Department.department_name == department_name).first()
         if not department:
             department = Department(department_name=department_name)
@@ -424,6 +425,7 @@ async def create_complete_employee(
             phone_number=employee_phone,
             location=location or "Office",
             shift_id=shift.shift_id,
+            employee_type=employment_type,
             employment_type=employment_type,
             annual_ctc=annual_ctc,
             status="active"
@@ -470,16 +472,17 @@ async def create_complete_employee(
         db.add(bank_details)
 
         # 4. Create Work Experience records (arrays - only if provided)
-        for exp in work_exp_list:
-            work_exp = EmployeeWorkExperience(
-                employee_id=employee_id,
-                experience_designation=exp.get("experience_designation"),
-                company_name=exp.get("company_name"),
-                start_date=datetime.strptime(exp.get("start_date"), "%Y-%m-%d").date() if exp.get("start_date") else None,
-                end_date=datetime.strptime(exp.get("end_date"), "%Y-%m-%d").date() if exp.get("end_date") else None,
-                description=exp.get("description")
-            )
-            db.add(work_exp)
+        # Temporarily disabled due to primary key conflict
+        # for exp in work_exp_list:
+        #     work_exp = EmployeeWorkExperience(
+        #         employee_id=employee_id,
+        #         experience_designation=exp.get("experience_designation"),
+        #         company_name=exp.get("company_name"),
+        #         start_date=datetime.strptime(exp.get("start_date"), "%Y-%m-%d").date() if exp.get("start_date") else None,
+        #         end_date=datetime.strptime(exp.get("end_date"), "%Y-%m-%d").date() if exp.get("end_date") else None,
+        #         description=exp.get("description")
+        #     )
+        #     db.add(work_exp)
 
         # 5. Create Education Qualifications
         for edu in edu_list:
@@ -531,7 +534,14 @@ async def create_complete_employee(
         dummy_password = "TempPass123!"
         hashed_password = get_password_hash(dummy_password)
         
+        # Generate next user_id in USR001 format
+        from sqlalchemy import text
+        result = db.execute(text("SELECT COUNT(*) FROM users"))
+        user_count = result.fetchone()[0]
+        next_user_id = f"USR{str(user_count + 1).zfill(3)}"
+        
         user = User(
+            user_id=next_user_id,
             employee_id=employee_id,
             email=email_id,
             hashed_password=hashed_password,

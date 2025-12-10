@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from models.salary import PayrollSetup
-from models.Employee_models import Employee
+from src.models.salary import PayrollSetup
+from src.models.hrms_models import Employee
 
 from schemas.salary import SalaryCreate, PayrollSetupUpdate, SalaryComponentUpdate, ComponentDelete
 from typing import Optional
@@ -511,7 +511,7 @@ class SalaryService:
     
     @staticmethod
     def get_salary_summary(db: Session, employee_id: str):
-        from models.Employee_models import Employee
+        # Employee already imported at top
         from datetime import datetime
         
         employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()

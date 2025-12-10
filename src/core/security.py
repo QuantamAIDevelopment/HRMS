@@ -2,7 +2,7 @@ from jose import JWTError, jwt
 from datetime import datetime, timedelta
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from config.constants import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
+from src.config.constants import SECRET_KEY, ACCESS_TOKEN_EXPIRE_MINUTES
 import random
 import string
 import bcrypt
@@ -57,3 +57,15 @@ def generate_otp(length: int = 6) -> str:
 
 def generate_reset_token(length: int = 32) -> str:
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+# Type alias for current user
+CurrentUser = dict
+
+def require_hr_role(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Require HR role for access"""
+    if not credentials or not credentials.credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    
+    # For now, just verify the token - role checking can be added later
+    email = verify_token(credentials.credentials)
+    return {"email": email, "role": "HR"}

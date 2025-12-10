@@ -39,7 +39,7 @@ def get_all_salaries(db: Session = Depends(get_db)):
 @router.get("/all-employee-ids")
 def get_all_employee_ids(db: Session = Depends(get_db)):
     try:
-        from models.Employee_models import Employee
+        from src.models.hrms_models import Employee
         employees = db.query(Employee.employee_id).all()
         return {"employee_ids": [emp.employee_id for emp in employees]}
     except Exception as e:
