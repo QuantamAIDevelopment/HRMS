@@ -8,18 +8,21 @@ logger = logging.getLogger(__name__)
 
 def send_email(to_email: str, subject: str, body: str):
     try:
+        print(f"\n=== EMAIL SEND ATTEMPT ===")
         print(f"SMTP Config: {settings.smtp_server}:{settings.smtp_port}")
+        print(f"Username: {settings.smtp_username}")
+        print(f"Password length: {len(settings.smtp_password)}")
         print(f"From: {settings.from_email} To: {to_email}")
         
         msg = MIMEMultipart()
         msg['From'] = settings.from_email
         msg['To'] = to_email
         msg['Subject'] = subject
-        
         msg.attach(MIMEText(body, 'plain'))
         
         print("Connecting to SMTP server...")
-        server = smtplib.SMTP(settings.smtp_server, settings.smtp_port)
+        server = smtplib.SMTP(settings.smtp_server, settings.smtp_port, timeout=10)
+        server.set_debuglevel(1)
         print("Starting TLS...")
         server.starttls()
         print("Logging in...")
@@ -31,11 +34,15 @@ def send_email(to_email: str, subject: str, body: str):
         server.quit()
         
         logger.info(f"Email sent successfully to {to_email}")
-        print(f"SUCCESS: Email sent to {to_email}")
+        print(f"SUCCESS: Email sent to {to_email}\n")
         return True
     except Exception as e:
+        import traceback
         logger.error(f"Failed to send email to {to_email}: {e}")
-        print(f"ERROR: Email sending failed - {type(e).__name__}: {e}")
+        print(f"\nERROR: Email sending failed")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {e}")
+        print(f"Traceback: {traceback.format_exc()}\n")
         return False
 
 def send_otp_email(email: str, otp: str):

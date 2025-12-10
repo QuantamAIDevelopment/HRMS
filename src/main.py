@@ -75,20 +75,21 @@ async def global_exception_handler(request: Request, exc: Exception):
         }
     )
 
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    logger.info(f"Incoming request: {request.method} {request.url}")
+    logger.info(f"Headers: {dict(request.headers)}")
+    response = await call_next(request)
+    logger.info(f"Response status: {response.status_code}")
+    return response
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000", 
-        "http://localhost:8005",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-        "http://127.0.0.1:8005",
-        "*"
-    ],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
     allow_headers=["*"],
 )
 
@@ -102,7 +103,12 @@ app.include_router(complete_employee_router, prefix="/api/v1", tags=["complete-e
 
 @app.get("/", tags=["Root"])
 def read_root():
+    logger.info("Root endpoint hit")
     return {"message": "HRMS Backend API is running", "docs": "/docs"}
+
+@app.get("/health", tags=["Root"])
+def health_check():
+    return {"status": "healthy"}
 
 
 

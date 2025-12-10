@@ -166,22 +166,31 @@ async def change_password(
 
 @router.post("/forgot-password", response_model=MessageResponse)
 def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
-    print(f"Forgot password request for: {request.email}")
+    from core.security import generate_otp
+    print(f"\n=== FORGOT PASSWORD REQUEST ===")
+    print(f"Email: {request.email}")
     
     # Check if user exists
     user = db.query(User).filter(User.email == request.email).first()
     if not user:
+        print(f"User not found: {request.email}")
         return MessageResponse(message="If the email exists, an OTP has been sent")
     
-    success = TokenService.create_and_send_otp(db, request.email)
-    print(f"OTP creation success: {success}")
+    # Generate OTP
+    otp = generate_otp()
+    print(f"\n*** GENERATED OTP: {otp} ***")
+    print(f"*** FOR EMAIL: {request.email} ***\n")
     
-    if success:
-        # Store email in session for later use
-        forgot_password_sessions["current_reset_email"] = request.email
-        return MessageResponse(message="OTP sent to your email")
-    else:
-        return MessageResponse(message="Failed to send OTP")
+    # Try to send email
+    success = TokenService.create_and_send_otp(db, request.email)
+    print(f"Email send success: {success}")
+    
+    # Store email in session for later use
+    forgot_password_sessions["current_reset_email"] = request.email
+    forgot_password_sessions[f"otp_{request.email}"] = otp
+    
+    # Always return success message (security best practice)
+    return MessageResponse(message="OTP sent to your email. Check server console if email fails.")
 
 @router.post("/resend-otp", response_model=MessageResponse)
 def resend_otp(request: ResendOtpRequest, db: Session = Depends(get_db)):
@@ -193,11 +202,25 @@ def resend_otp(request: ResendOtpRequest, db: Session = Depends(get_db)):
 
 @router.post("/verify-otp", response_model=MessageResponse)
 def verify_otp(request: VerifyOtpRequest, db: Session = Depends(get_db)):
-    # Simple OTP verification (accepts any 6-digit OTP)
+    print(f"\n=== OTP VERIFICATION ===")
+    print(f"Email: {request.email}")
+    print(f"Received OTP: {request.otp}")
+    
+    # Check session storage first
+    stored_otp = forgot_password_sessions.get(f"otp_{request.email}")
+    print(f"Stored OTP: {stored_otp}")
+    
+    if stored_otp and stored_otp == request.otp:
+        print("OTP matched from session!")
+        return MessageResponse(message="OTP verified successfully")
+    
+    # Fallback: Simple OTP verification (accepts any 6-digit OTP)
     if len(request.otp) == 6 and request.otp.isdigit():
+        print("OTP format valid (fallback)")
         return MessageResponse(message="OTP verified successfully")
     else:
-        raise HTTPException(status_code=400, detail="Invalid OTP format")
+        print("OTP verification failed")
+        raise HTTPException(status_code=400, detail="Invalid OTP")
 
 @router.post("/reset-password", response_model=MessageResponse)
 def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
@@ -220,4 +243,13 @@ def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db))
 @router.post("/logout", response_model=MessageResponse)
 def logout():
     return MessageResponse(message="Logged out successfully")
+
+@router.get("/get-otp/{email}")
+def get_otp_for_testing(email: str):
+    """Development endpoint to get OTP when email fails"""
+    otp = forgot_password_sessions.get(f"otp_{email}")
+    if otp:
+        return {"email": email, "otp": otp, "message": "OTP found"}
+    else:
+        return {"email": email, "otp": None, "message": "No OTP found. Request forgot password first."}
 
