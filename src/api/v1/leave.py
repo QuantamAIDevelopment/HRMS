@@ -85,9 +85,13 @@ def get_leave_balance(employee_id: str, db: Session = Depends(get_db)):
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": employee_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="Employee not found")
-        result = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND UPPER(status) = 'APPROVED'"), {"emp_id": employee_id}).fetchone()
-        total_used = result[0] if result else 0
-        return LeaveBalance(casual_leave=6, sick_leave=6, earned_leaves=6, total_leaves=18, employee_used_leaves=total_used, used_casual=0, used_sick=total_used, used_earned=0, remaining_casual=6, remaining_sick=6-total_used, remaining_earned=6)
+        
+        casual_used = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND status = 'APPROVED' AND LOWER(leave_type) LIKE '%casual%'"), {"emp_id": employee_id}).fetchone()[0] or 0
+        sick_used = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND status = 'APPROVED' AND LOWER(leave_type) LIKE '%sick%'"), {"emp_id": employee_id}).fetchone()[0] or 0
+        earned_used = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND status = 'APPROVED' AND LOWER(leave_type) LIKE '%earned%'"), {"emp_id": employee_id}).fetchone()[0] or 0
+        total_used = casual_used + sick_used + earned_used
+        
+        return LeaveBalance(casual_leave=6, sick_leave=6, earned_leaves=6, total_leaves=18, employee_used_leaves=total_used, used_casual=casual_used, used_sick=sick_used, used_earned=earned_used, remaining_casual=6-casual_used, remaining_sick=6-sick_used, remaining_earned=6-earned_used)
     except HTTPException:
         raise
     except Exception as e:

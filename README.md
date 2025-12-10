@@ -99,9 +99,6 @@ database_url: str = "postgresql://postgres:password@127.0.0.1:5432/hrms_app"
 
 - `employees` - Employee information
 - `leave_management` - Leave records
-- `employee_balances` - Employee leave balances
-- `manager_balances` - Manager leave balances
-- `hr_executive_balances` - HR Executive leave balances
 - `assets` - Asset information
 - `attendance` - Attendance/punch records
 
