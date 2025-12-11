@@ -6,7 +6,6 @@ class JobTitleBase(BaseModel):
     job_title: str
     job_description: Optional[str] = None
     department: str
-    level: Optional[str] = "Mid-Level"
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
 
@@ -17,7 +16,6 @@ class JobTitleUpdate(BaseModel):
     job_title: Optional[str] = None
     job_description: Optional[str] = None
     department: Optional[str] = None
-    level: Optional[str] = None
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
 

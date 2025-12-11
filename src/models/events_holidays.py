@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, Date, DateTime
 from sqlalchemy.sql import func
 from .base import Base
-
 class EventsHolidays(Base):
     __tablename__ = "events_holidays"
     __table_args__ = {'extend_existing': True}

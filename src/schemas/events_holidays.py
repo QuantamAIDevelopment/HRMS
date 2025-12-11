@@ -3,19 +3,17 @@ from typing import Optional
 from datetime import date, datetime
 
 class EventsHolidaysCreate(BaseModel):
-    title: str
-    subtitle: Optional[str] = None
+    name: str
+    description: Optional[str] = None
     type: str  # Event / Public Holiday / Optional Holiday
-    event_date: date
-    location: Optional[str] = 'N/A'
+    date: date
 
 class EventsHolidaysResponse(BaseModel):
     id: int
-    title: str
-    subtitle: Optional[str]
+    name: str
+    description: Optional[str]
     type: str
-    event_date: date
-    location: str
+    date: date
     created_at: datetime
     updated_at: datetime
     

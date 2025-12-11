@@ -27,6 +27,7 @@ class Employee(Base):
     location = Column(String(50))
     shift_id = Column(Integer, nullable=False)
     employment_type = Column(String(50), nullable=False)
+    employment_type = Column(String(50), nullable=False)
     annual_ctc = Column(String(50), default="0")
     annual_leaves = Column(Integer, server_default='21')
     
@@ -120,9 +121,11 @@ class Assets(Base):
     __table_args__ = {'extend_existing': True}
 
     asset_id = Column(Integer, primary_key=True, autoincrement=True)
+    serial_number = Column(String(50), unique=True)
     asset_name = Column(String(50), nullable=False)
     asset_type = Column(String(50), nullable=False)
-    serial_number = Column(String(50), unique=True, nullable=False)
+    employee_id = Column(String, nullable=True)
+    assigned_to = Column(String, nullable=True)
     status = Column(String(50), default="Available")
     condition = Column(String(50), nullable=True)
     employee_id = Column(String(50), nullable=True)
@@ -195,6 +198,7 @@ class ShiftMaster(Base):
     start_time = Column(Time, nullable=False)
     end_time = Column(Time, nullable=False)
     working_days = Column(String(200), default="Monday-Friday")
+    employees = Column(Integer, server_default='0')
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 

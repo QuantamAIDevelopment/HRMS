@@ -24,11 +24,9 @@ def get_job_title_cards(db: Session = Depends(get_db)):
     query = text("""
         SELECT 
             COUNT(DISTINCT jt.job_title_id) as total_roles,
-            COUNT(DISTINCT d.department_name) as departments,
-            COUNT(DISTINCT e.employee_id) as total_employees
+            COUNT(DISTINCT jt.department) as departments,
+            SUM(jt.employees) as total_employees
         FROM job_titles jt
-        LEFT JOIN employees e ON jt.job_title = e.designation
-        LEFT JOIN departments d ON e.department_id = d.department_id
     """)
     result = db.execute(query).fetchone()
     return dict(result._mapping)
