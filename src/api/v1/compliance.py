@@ -14,7 +14,7 @@ from src.schemas.compliance_document import (
 )
 from src.services.compliance_service import ComplianceService
 
-router = APIRouter(prefix="/compliance", tags=["Compliance Documents"])
+router = APIRouter(tags=["Compliance Documents"])
 
 # Temporary dependency - replace with actual auth
 def get_current_employee():
