@@ -8,12 +8,22 @@ from src.models.employee_profile import ProfileEditRequest
 
 router = APIRouter()
 
-@router.get("/approval/profile-requests")
+@router.get("/profile-requests")
 def get_all_profile_requests(db: Session = Depends(get_db)):
     requests = db.query(ProfileEditRequest).all()
-    return requests
+    return [{
+        "id": req.id,
+        "employee_id": req.employee_id,
+        "requested_changes": req.requested_changes,
+        "reason": req.reason,
+        "old_value": req.old_value,
+        "new_value": req.new_value,
+        "status": req.status,
+        "manager_comments": req.manager_comments,
+        "created_at": req.created_at
+    } for req in requests]
 
-@router.get("/approval/cards")
+@router.get("/cards")
 def get_approval_cards(db: Session = Depends(get_db)):
     query = text("""
         SELECT 
@@ -31,7 +41,7 @@ def get_approval_cards(db: Session = Depends(get_db)):
         "rejected": result.rejected or 0
     }
 
-@router.put("/approval/employee/{employee_id}")
+@router.put("employee/{employee_id}")
 def update_employee_requests(employee_id: str, status: str = Query(...), comments: str = Query(None), db: Session = Depends(get_db)):
     edit_requests = db.query(ProfileEditRequest).filter(
         ProfileEditRequest.employee_id == employee_id,
@@ -94,7 +104,7 @@ def update_employee_requests(employee_id: str, status: str = Query(...), comment
                     if new_value not in valid_conditions:
                         continue  # Skip invalid condition values
                 
-                query = text(f"UPDATE assets SET {field_name} = :new_value WHERE assigned_employee_id = :employee_id")
+                query = text(f"UPDATE assets SET {field_name} = :new_value WHERE employee_id = :employee_id")
                 if field_name == "purchase_date":
                     from datetime import datetime
                     db.execute(query, {"new_value": datetime.strptime(new_value, "%Y-%m-%d").date(), "employee_id": employee_id})
@@ -112,7 +122,7 @@ def update_employee_requests(employee_id: str, status: str = Query(...), comment
             elif field_name in ["account_number", "account_holder_name", "ifsc_code", "bank_name", "branch", "account_type", "pan_number", "aadhaar_number"]:
                 query = text(f"UPDATE bank_details SET {field_name} = :new_value WHERE employee_id = :employee_id")
                 db.execute(query, {"new_value": new_value, "employee_id": employee_id})
-            elif field_name in ["file_name", "category", "upload_date"]:
+            elif field_name in ["document_name", "file_name", "category", "upload_date"]:
                 query = text(f"UPDATE employee_documents SET {field_name} = :new_value WHERE employee_id = :employee_id")
                 if field_name == "upload_date":
                     from datetime import datetime

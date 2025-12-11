@@ -111,7 +111,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
     education = db.query(EducationalQualifications).filter(EducationalQualifications.employee_id == employee_id).all()
     work_experience = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
     documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
-    assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
+    assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
     
     return {
         "employee_info": {
@@ -125,7 +125,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
             "joining_date": str(employee.joining_date),
             "reporting_manager": employee.reporting_manager,
             "location": employee.location,
-            "employment_type": employee.employee_type,
+            "employment_type": employee.employment_type,
             "annual_ctc": employee.annual_ctc
         },
         "personal_details": {
@@ -450,7 +450,7 @@ async def create_complete_employee(
             phone_number=employee_phone,
             location=location or "Office",
             shift_id=shift_id,
-            employee_type=employment_type,
+            employment_type=employment_type,
             annual_ctc=annual_ctc
         )
         db.add(employee)
@@ -543,7 +543,7 @@ async def create_complete_employee(
             ).first()
             
             if asset:
-                asset.assigned_employee_id = employee_id
+                asset.employee_id = employee_id
                 asset.status = "Assigned"
             else:
                 raise HTTPException(
@@ -564,6 +564,18 @@ async def create_complete_employee(
         )
         db.add(user)
 
+        # Update job_titles employee count
+        db.execute(
+            text("UPDATE job_titles SET employees = (SELECT COUNT(*) FROM employees WHERE designation = job_titles.job_title) WHERE job_title = :designation"),
+            {"designation": designation}
+        )
+        
+        # Update shift_master employee count
+        db.execute(
+            text("UPDATE shift_master SET employees = (SELECT COUNT(*) FROM employees WHERE shift_id = shift_master.shift_id) WHERE shift_id = :shift_id"),
+            {"shift_id": shift_id}
+        )
+        
         # Commit all changes
         db.commit()
 
@@ -603,7 +615,7 @@ HR Team"""
         created_education = db.query(EducationalQualifications).filter(EducationalQualifications.employee_id == employee_id).all()
         created_work_exp = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
         created_documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
-        created_assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
+        created_assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
         
         # Return complete employee information
         return {
@@ -625,7 +637,7 @@ HR Team"""
                     "joining_date": str(created_employee.joining_date),
                     "reporting_manager": created_employee.reporting_manager,
                     "location": created_employee.location,
-                    "employment_type": created_employee.employee_type,
+                    "employment_type": created_employee.employment_type,
                     "annual_ctc": created_employee.annual_ctc
                 },
                 "personal_details": {

@@ -99,7 +99,7 @@ def get_employee(
         "phone_number": employee.phone_number,
         "reporting_manager": employee.reporting_manager,
         "joining_date": employee.joining_date,
-        "employee_type": employee.employee_type,
+        "employee_type": employee.employment_type,
         "annual_ctc": annual_ctc,
         "monthly_estimate": monthly_estimate,
         "casual_leave": leave_balances['casual_leave'],
