@@ -523,8 +523,8 @@ class SalaryService:
             
             if not payroll_records:
                 try:
-                    annual_ctc = float(employee.annual_ctc) if employee.annual_ctc and employee.annual_ctc.strip() else 0.0
-                except (ValueError, AttributeError):
+                    annual_ctc = float(employee.annual_ctc) if employee.annual_ctc and str(employee.annual_ctc).strip() and str(employee.annual_ctc).strip() != '0' else 0.0
+                except (ValueError, AttributeError, TypeError):
                     annual_ctc = 0.0
                 
                 return {
@@ -534,8 +534,8 @@ class SalaryService:
                 }
             
             try:
-                annual_ctc = float(employee.annual_ctc) if employee.annual_ctc and employee.annual_ctc.strip() else 0.0
-            except (ValueError, AttributeError):
+                annual_ctc = float(employee.annual_ctc) if employee.annual_ctc and str(employee.annual_ctc).strip() and str(employee.annual_ctc).strip() != '0' else 0.0
+            except (ValueError, AttributeError, TypeError):
                 annual_ctc = 0.0
             
             latest_record = max(payroll_records, key=lambda x: x.created_at if x.created_at else datetime.min)
@@ -716,7 +716,10 @@ class SalaryService:
     @staticmethod
     def delete_salary_component(db: Session, delete_data: ComponentDelete):
         """Delete component and recalculate totals"""
-        print(f"DELETE DEBUG: employee_id={delete_data.employee_id}, month={delete_data.month}, component={delete_data.component_name}, type={delete_data.component_type}")
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Deleting component: {delete_data.component_name} for employee {delete_data.employee_id} in {delete_data.month}")
+        
         try:
             payroll_record = db.query(PayrollSetup).filter(
                 PayrollSetup.employee_id == delete_data.employee_id,
@@ -800,19 +803,13 @@ class SalaryService:
         except HTTPException:
             raise
         except Exception as e:
-            error_msg = str(e) if str(e).strip() else f"Unknown error of type {type(e).__name__}"
-            print(f"DELETE COMPONENT ERROR: {error_msg}")
-            print(f"Error type: {type(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error deleting component: {str(e)}")
             db.rollback()
-            raise HTTPException(status_code=500, detail=f"Error deleting component: {error_msg}")
+            raise HTTPException(status_code=500, detail=f"Error deleting component: {str(e)}")
     
     @staticmethod
     def cleanup_duplicate_records(db: Session, employee_id: str, month: str):
         """Remove duplicate records, keep only the latest one"""
-
-        
         duplicate_records = db.query(PayrollSetup).filter(
             PayrollSetup.employee_id == employee_id,
             PayrollSetup.month == month
@@ -888,82 +885,114 @@ class SalaryService:
     def force_delete_component(db: Session, employee_id: str, month: str, component_name: str):
         """Force delete a specific salary component"""
         from sqlalchemy.orm.attributes import flag_modified
+        import urllib.parse
+        import logging
         
-        payroll_record = db.query(PayrollSetup).filter(
-            PayrollSetup.employee_id == employee_id,
-            PayrollSetup.month == month
-        ).first()
+        logger = logging.getLogger(__name__)
+        logger.info(f"Force deleting component: {component_name} for employee {employee_id} in {month}")
         
-        if not payroll_record:
-            raise HTTPException(status_code=404, detail="Payroll record not found")
-        
-        employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
-        if not employee:
-            raise HTTPException(status_code=404, detail="Employee not found")
-        
-        annual_ctc = Decimal(employee.annual_ctc)
-        
-        components = payroll_record.salary_components or {"earnings": [], "deductions": []}
-        if isinstance(components, str):
-            import json
-            components = json.loads(components)
-        
-        component_lower = component_name.strip().lower()
-        deleted = False
-        
-        original_earnings = len(components.get("earnings", []))
-        components["earnings"] = [c for c in components.get("earnings", []) 
-                                if c["component_name"].strip().lower() != component_lower]
-        if len(components["earnings"]) < original_earnings:
-            deleted = True
-        
-        if not deleted:
-            original_deductions = len(components.get("deductions", []))
-            components["deductions"] = [c for c in components.get("deductions", []) 
-                                      if c["component_name"].strip().lower() != component_lower]
-            if len(components["deductions"]) < original_deductions:
+        try:
+            # URL decode the component name
+            component_name = urllib.parse.unquote(component_name)
+            
+            payroll_record = db.query(PayrollSetup).filter(
+                PayrollSetup.employee_id == employee_id,
+                PayrollSetup.month == month
+            ).first()
+            
+            if not payroll_record:
+                raise HTTPException(status_code=404, detail="Payroll record not found")
+            
+            employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
+            if not employee:
+                raise HTTPException(status_code=404, detail="Employee not found")
+            
+            annual_ctc = Decimal(employee.annual_ctc)
+            
+            components = payroll_record.salary_components or {"earnings": [], "deductions": []}
+            if isinstance(components, str):
+                import json
+                components = json.loads(components)
+            
+            component_lower = component_name.strip().lower()
+            deleted = False
+            
+            # Try to delete from earnings
+            original_earnings = len(components.get("earnings", []))
+            components["earnings"] = [c for c in components.get("earnings", []) 
+                                    if c["component_name"].strip().lower() != component_lower]
+            if len(components["earnings"]) < original_earnings:
                 deleted = True
-        
-        if not deleted:
-            raise HTTPException(status_code=404, detail=f"Component '{component_name}' not found")
-        
-        # Recalculate totals
-        additional_earnings = Decimal('0')
-        for earning in components.get("earnings", []):
-            if earning["component_type"].lower() == "percentage":
-                additional_earnings += (annual_ctc * Decimal(str(earning.get("original_percentage", earning["amount"]))) / 100) / 12
-            else:
-                additional_earnings += Decimal(str(earning["amount"]))
-        
-        additional_deductions = Decimal('0')
-        for deduction in components.get("deductions", []):
-            if deduction["component_type"].lower() == "percentage":
-                additional_deductions += (annual_ctc * Decimal(str(deduction.get("original_percentage", deduction["amount"]))) / 100) / 12
-            else:
-                additional_deductions += Decimal(str(deduction["amount"]))
-        
-        base_earnings = payroll_record.basic_salary + payroll_record.hra + payroll_record.allowance
-        base_deductions = (annual_ctc * payroll_record.provident_fund_percentage / 100) / 12 + payroll_record.professional_tax
-        
-        payroll_record.salary_components = components
-        flag_modified(payroll_record, "salary_components")
-        payroll_record.total_earnings = base_earnings + additional_earnings
-        payroll_record.total_deductions = base_deductions + additional_deductions
-        payroll_record.net_salary = payroll_record.total_earnings - payroll_record.total_deductions
-        
-        db.commit()
-        db.refresh(payroll_record)
-        
-        return {
-            "message": "Component deleted successfully",
-            "employee_id": employee_id,
-            "month": month,
-            "deleted_component": component_name,
-            "new_totals": {
-                "total_earnings": float(payroll_record.total_earnings),
-                "total_deductions": float(payroll_record.total_deductions),
-                "net_salary": float(payroll_record.net_salary)
-            },
-            "remaining_components": components
-        }
+                logger.info(f"Deleted component from earnings: {component_name}")
+            
+            # Try to delete from deductions if not found in earnings
+            if not deleted:
+                original_deductions = len(components.get("deductions", []))
+                components["deductions"] = [c for c in components.get("deductions", []) 
+                                          if c["component_name"].strip().lower() != component_lower]
+                if len(components["deductions"]) < original_deductions:
+                    deleted = True
+                    logger.info(f"Deleted component from deductions: {component_name}")
+            
+            if not deleted:
+                available_components = []
+                for earning in components.get("earnings", []):
+                    available_components.append(f"earnings: {earning['component_name']}")
+                for deduction in components.get("deductions", []):
+                    available_components.append(f"deductions: {deduction['component_name']}")
+                
+                logger.error(f"Component '{component_name}' not found. Available: {available_components}")
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"Component '{component_name}' not found. Available components: {available_components}"
+                )
+            
+            # Recalculate totals
+            additional_earnings = Decimal('0')
+            for earning in components.get("earnings", []):
+                if earning["component_type"].lower() == "percentage":
+                    additional_earnings += (annual_ctc * Decimal(str(earning.get("original_percentage", earning["amount"]))) / 100) / 12
+                else:
+                    additional_earnings += Decimal(str(earning["amount"]))
+            
+            additional_deductions = Decimal('0')
+            for deduction in components.get("deductions", []):
+                if deduction["component_type"].lower() == "percentage":
+                    additional_deductions += (annual_ctc * Decimal(str(deduction.get("original_percentage", deduction["amount"]))) / 100) / 12
+                else:
+                    additional_deductions += Decimal(str(deduction["amount"]))
+            
+            base_earnings = payroll_record.basic_salary + payroll_record.hra + payroll_record.allowance
+            base_deductions = (annual_ctc * payroll_record.provident_fund_percentage / 100) / 12 + payroll_record.professional_tax
+            
+            payroll_record.salary_components = components
+            flag_modified(payroll_record, "salary_components")
+            payroll_record.total_earnings = base_earnings + additional_earnings
+            payroll_record.total_deductions = base_deductions + additional_deductions
+            payroll_record.net_salary = payroll_record.total_earnings - payroll_record.total_deductions
+            
+            db.commit()
+            db.refresh(payroll_record)
+            
+            logger.info(f"Successfully deleted component and updated payroll")
+            
+            return {
+                "message": "Component deleted successfully",
+                "employee_id": employee_id,
+                "month": month,
+                "deleted_component": component_name,
+                "new_totals": {
+                    "total_earnings": float(payroll_record.total_earnings),
+                    "total_deductions": float(payroll_record.total_deductions),
+                    "net_salary": float(payroll_record.net_salary)
+                },
+                "remaining_components": components
+            }
+            
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Error in force_delete_component: {str(e)}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Error deleting component: {str(e)}")
     

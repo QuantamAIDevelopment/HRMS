@@ -27,14 +27,21 @@ import json
 import os
 
 def safe_decode_binary(data):
-    """Safely decode binary data to string"""
+    """Convert binary data to base64 string"""
     if not data:
         return None
     try:
+        import base64
         if isinstance(data, memoryview):
             data = data.tobytes()
-        return data.decode('utf-8')
-    except (UnicodeDecodeError, AttributeError):
+        elif isinstance(data, bytes):
+            pass  # Already bytes
+        else:
+            # Convert other types to bytes if possible
+            data = bytes(data)
+        return base64.b64encode(data).decode('utf-8')
+    except Exception as e:
+        logger.error(f"Error converting binary data to base64: {e}")
         return None
 
 router = APIRouter()
@@ -111,7 +118,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
     education = db.query(EducationalQualifications).filter(EducationalQualifications.employee_id == employee_id).all()
     work_experience = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
     documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
-    assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
+    assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
     
     return {
         "employee_info": {
@@ -125,7 +132,7 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
             "joining_date": str(employee.joining_date),
             "reporting_manager": employee.reporting_manager,
             "location": employee.location,
-            "employment_type": employee.employee_type,
+            "employment_type": employee.employment_type,
             "annual_ctc": employee.annual_ctc
         },
         "personal_details": {
@@ -177,7 +184,8 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
             "document_name": doc.document_name,
             "category": doc.category,
             "upload_date": str(doc.upload_date),
-            "status": doc.status
+            "status": doc.status,
+            "file_data": safe_decode_binary(doc.files) if doc.files else None
         } for doc in documents],
         "assets": [{
             "asset_id": asset.asset_id,
@@ -284,6 +292,8 @@ async def create_complete_employee(
         logger.info(f"Received complete-employee request")
         logger.info(f"Content-Type: {request.headers.get('content-type')}")
         logger.info(f"Employee ID received: {employee_id}")
+        logger.info(f"Personal email (employee_email): {employee_email}")
+        logger.info(f"Official email (email_id): {email_id}")
         # Build work experience list (handle empty values)
         work_exp_list = []
         if company_name:
@@ -333,16 +343,14 @@ async def create_complete_employee(
                         hasattr(files[i], 'filename') and files[i].filename and files[i].filename.strip()):
                         
                         try:
-                            import base64
                             content = await files[i].read()
                             logger.info(f"File {i} read successfully, size: {len(content)}")
-                            file_base64 = base64.b64encode(content).decode('utf-8')
-                            logger.info(f"File {i} converted to base64, length: {len(file_base64)}")
                             
                             doc_list.append({
                                 "document_name": document_name[i].strip(),
                                 "category": category[i].strip(),
-                                "file_data": file_base64
+                                "file_name": files[i].filename,
+                                "files": content
                             })
                         except Exception as file_error:
                             logger.error(f"Error processing file {i}: {str(file_error)}")
@@ -352,7 +360,8 @@ async def create_complete_employee(
                         doc_list.append({
                             "document_name": document_name[i].strip(),
                             "category": category[i].strip(),
-                            "file_data": None
+                            "file_name": "No file uploaded",
+                            "files": None
                         })
         logger.info(f"Document list created: {len(doc_list)} documents")
         
@@ -446,11 +455,11 @@ async def create_complete_employee(
             designation=designation,
             joining_date=datetime.strptime(joining_date, "%Y-%m-%d").date(),
             reporting_manager=reporting_manager or "TBD",
-            email_id=email_id,  # Store official email in Employee table
+            email_id=email_id,  # Store official company email in Employee table
             phone_number=employee_phone,
             location=location or "Office",
             shift_id=shift_id,
-            employee_type=employment_type,
+            employment_type=employment_type,
             annual_ctc=annual_ctc
         )
         db.add(employee)
@@ -465,7 +474,7 @@ async def create_complete_employee(
             blood_group=blood_group,
             nationality=nationality,
             employee_phone=employee_phone,
-            employee_email=employee_email,
+            employee_email=employee_email,  # Store personal email in personal details
             employee_alternate_phone=employee_alternate_phone,
             employee_address=employee_address,
             city=city,
@@ -523,13 +532,15 @@ async def create_complete_employee(
 
         # 6. Create Document records
         for doc in doc_list:
-            file_data = doc.get("file_data")
+            file_data = doc.get("files")
             document = EmployeeDocuments(
                 employee_id=employee_id,
                 document_name=doc.get("document_name"),
+                file_name=doc.get("file_name"),
                 category=doc.get("category"),
                 upload_date=datetime.now().date(),
-                status="Uploaded" if file_data else "Pending"
+                status="Uploaded" if file_data else "Pending",
+                files=file_data
             )
             db.add(document)
 
@@ -543,7 +554,8 @@ async def create_complete_employee(
             ).first()
             
             if asset:
-                asset.assigned_employee_id = employee_id
+                asset.employee_id = employee_id
+                asset.assigned_to = f"{first_name} {last_name}"
                 asset.status = "Assigned"
             else:
                 raise HTTPException(
@@ -570,25 +582,12 @@ async def create_complete_employee(
         # 9. Send onboarding email to personal email
         email_sent = False
         try:
-            # Create custom email body with official email and temp password
-            from services.email_service import send_email
-            subject = "Welcome to Company - Your Login Credentials"
-            body = f"""Dear {first_name} {last_name},
-
-Welcome to our company! Your official login credentials are:
-
-Official Email: {email_id}
-Temporary Password: {dummy_password}
-
-Please login and change your password immediately.
-
-Best regards,
-HR Team"""
-            
-            email_sent = send_email(
+            email_sent = send_user_credentials_email(
                 to_email=employee_email,  # Send to personal email
-                subject=subject,
-                body=body
+                employee_id=employee_id,
+                password=dummy_password,
+                full_name=f"{first_name} {last_name}",
+                official_email=email_id  # Official company email for login
             )
         except Exception as e:
             print(f"Failed to send onboarding email: {e}")
@@ -603,7 +602,7 @@ HR Team"""
         created_education = db.query(EducationalQualifications).filter(EducationalQualifications.employee_id == employee_id).all()
         created_work_exp = db.query(EmployeeWorkExperience).filter(EmployeeWorkExperience.employee_id == employee_id).all()
         created_documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
-        created_assets = db.query(Assets).filter(Assets.assigned_employee_id == employee_id).all()
+        created_assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
         
         # Return complete employee information
         return {
@@ -625,7 +624,7 @@ HR Team"""
                     "joining_date": str(created_employee.joining_date),
                     "reporting_manager": created_employee.reporting_manager,
                     "location": created_employee.location,
-                    "employment_type": created_employee.employee_type,
+                    "employment_type": created_employee.employment_type,
                     "annual_ctc": created_employee.annual_ctc
                 },
                 "personal_details": {
@@ -683,7 +682,8 @@ HR Team"""
                     "document_name": doc.document_name,
                     "category": doc.category,
                     "upload_date": str(doc.upload_date),
-                    "status": doc.status
+                    "status": doc.status,
+                    "file_data": safe_decode_binary(doc.files) if doc.files else None
                 } for doc in created_documents],
                 "assets": [{
                     "asset_id": asset.asset_id,

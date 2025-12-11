@@ -104,10 +104,20 @@ class TokenService:
             import random
             otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
             logger.info(f"Generated OTP for {email}: {otp}")
-            # In production, send email here
-            return True
+            
+            # Send OTP via email service
+            from services.email_service import email_service
+            email_sent = email_service.send_otp_email(email, otp)
+            
+            if email_sent:
+                logger.info(f"OTP email sent successfully to {email}")
+                return True
+            else:
+                logger.error(f"Failed to send OTP email to {email}")
+                return False
+                
         except Exception as e:
-            logger.error(f"Failed to create OTP: {str(e)}")
+            logger.error(f"Failed to create and send OTP: {str(e)}")
             return False
 
 token_service = TokenService()

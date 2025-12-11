@@ -114,10 +114,9 @@ security_scheme = HTTPBearer()
 async def change_password(
     request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
-    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    from src.core.security import get_password_hash, verify_password
+    from src.core.security import get_password_hash, verify_password, verify_token
     import json
    
     # Parse request body manually
@@ -137,6 +136,14 @@ async def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Both current_password and new_password are required"
         )
+    
+    # Get user email from token
+    user_email = verify_token(credentials.credentials)
+    
+    # Get actual user from database
+    current_user = db.query(User).filter(User.email == user_email).first()
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
    
     # JWT Token Required: get_current_user dependency validates the Bearer token
     # User Authentication: Checks if user exists from token (handled by get_current_user)

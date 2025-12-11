@@ -116,20 +116,20 @@ def get_salary_history(employee_id: str, db: Session = Depends(get_db)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error retrieving salary history: {str(e)}")
 
-@router.get("/check-components/{employee_id}/{month}")
-def check_components(employee_id: str, month: str, db: Session = Depends(get_db)):
-    """Check salary components for employee and month"""
-    try:
-        return SalaryService.check_components(db, employee_id, month)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error checking components: {str(e)}")
+
 
 @router.delete("/force-delete/{employee_id}/{month}/{component_name}")
 def force_delete_component(employee_id: str, month: str, component_name: str, db: Session = Depends(get_db)):
     """Force delete a specific salary component"""
     try:
+        print(f"API DELETE REQUEST: employee_id={employee_id}, month={month}, component_name={component_name}")
         return SalaryService.force_delete_component(db, employee_id, month, component_name)
+    except HTTPException:
+        raise
     except Exception as e:
+        print(f"API DELETE ERROR: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error deleting component: {str(e)}")
 
 

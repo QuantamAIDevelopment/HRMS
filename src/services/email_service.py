@@ -20,7 +20,8 @@ class EmailService:
         """Send email to recipient"""
         try:
             if not all([self.smtp_server, self.smtp_port, self.smtp_username, self.smtp_password]):
-                logger.warning("Email service not configured. Skipping email send.")
+                logger.error(f"Email service not configured. Missing SMTP settings. Cannot send email to {to_email}")
+                print(f"EMAIL ERROR: SMTP not configured - server:{self.smtp_server}, port:{self.smtp_port}, user:{self.smtp_username}, pass:{'***' if self.smtp_password else 'None'}")
                 return False
             
             msg = MIMEMultipart("alternative")
@@ -42,10 +43,12 @@ class EmailService:
                 server.send_message(msg)
             
             logger.info(f"Email sent successfully to {to_email}")
+            print(f"EMAIL SUCCESS: Sent to {to_email}")
             return True
         
         except Exception as e:
             logger.error(f"Failed to send email to {to_email}: {str(e)}")
+            print(f"EMAIL ERROR: Failed to send to {to_email} - {str(e)}")
             return False
     
     def send_welcome_email(self, to_email: str, full_name: str):
@@ -70,15 +73,16 @@ class EmailService:
         html_body = f"<html><body><h1>OTP Code</h1><p>Your OTP code is: <strong>{otp}</strong></p></body></html>"
         return self.send_email(to_email, subject, body, html_body)
     
-    def send_user_credentials_email(self, to_email: str, employee_id: str, password: str, full_name: str = None):
+    def send_user_credentials_email(self, to_email: str, employee_id: str, password: str, full_name: str = None, official_email: str = None):
         """Send user credentials email to new employee"""
         subject = "Your HRMS Account Credentials"
-        body = f"Hello {full_name or 'Employee'},\n\nYour HRMS account has been created.\n\nEmployee ID: {employee_id}\nTemporary Password: {password}\n\nPlease login and change your password.\n\nLogin URL: {settings.frontend_url}/login"
-        html_body = f"<html><body><h1>Welcome to HRMS!</h1><p>Hello {full_name or 'Employee'},</p><p>Your HRMS account has been created.</p><p><strong>Employee ID:</strong> {employee_id}<br><strong>Temporary Password:</strong> {password}</p><p>Please <a href='{settings.frontend_url}/login'>login</a> and change your password.</p></body></html>"
+        login_email = official_email or employee_id
+        body = f"Hello {full_name or 'Employee'},\n\nYour HRMS account has been created.\n\nLogin Email: {login_email}\nTemporary Password: {password}\n\nPlease login and change your password.\n\nLogin URL: {settings.frontend_url}/login"
+        html_body = f"<html><body><h1>Welcome to HRMS!</h1><p>Hello {full_name or 'Employee'},</p><p>Your HRMS account has been created.</p><p><strong>Login Email:</strong> {login_email}<br><strong>Temporary Password:</strong> {password}</p><p>Please <a href='{settings.frontend_url}/login'>login</a> and change your password.</p></body></html>"
         return self.send_email(to_email, subject, body, html_body)
 
 email_service = EmailService()
 
-def send_user_credentials_email(to_email: str, employee_id: str, password: str, full_name: str = None):
+def send_user_credentials_email(to_email: str, employee_id: str, password: str, full_name: str = None, official_email: str = None):
     """Helper function to send user credentials email"""
-    return email_service.send_user_credentials_email(to_email, employee_id, password, full_name)
+    return email_service.send_user_credentials_email(to_email, employee_id, password, full_name, official_email)

@@ -127,9 +127,9 @@ def get_all_expenses(db: Session = Depends(get_db)):
 
 
 @router.get("/employee-expenses/employee/{employee_id}")
-def get_employee_expenses(employee_id: str, db: Session = Depends(get_db)):
+def get_employee_expenses(employee_id: str, status: str = Query(None), db: Session = Depends(get_db)):
     try:
-        expenses = ExpenseService.get_expenses_by_employee(db, employee_id)
+        expenses = ExpenseService.get_expenses_by_employee(db, employee_id, status)
         return [{
             "employee_id": expense.employee_id,
             "category": expense.category,

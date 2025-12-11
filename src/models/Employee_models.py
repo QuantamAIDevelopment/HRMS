@@ -26,7 +26,7 @@ class Employee(Base):
     phone_number = Column(String(20), nullable=False)
     location = Column(String(50))
     shift_id = Column(Integer, nullable=False)
-    employee_type = Column(String(50), nullable=False)
+    employment_type = Column(String(50), nullable=False)
     annual_ctc = Column(String(50), default="0")
     annual_leaves = Column(Integer, server_default='21')
     
@@ -125,7 +125,8 @@ class Assets(Base):
     serial_number = Column(String(50), unique=True, nullable=False)
     status = Column(String(50), default="Available")
     condition = Column(String(50), nullable=True)
-    assigned_employee_id = Column(String(50), ForeignKey("employees.employee_id"), nullable=True)
+    employee_id = Column(String(50), nullable=True)
+    assigned_to = Column(String(100), nullable=True)
     purchase_date = Column(Date, nullable=True)
     value = Column(Numeric(12, 2), nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
@@ -171,6 +172,7 @@ class EmployeeDocuments(Base):
     category = Column(String(50), nullable=False)
     upload_date = Column(Date, nullable=False)
     status = Column(String(50), default="Pending")
+    files = Column(LargeBinary, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
