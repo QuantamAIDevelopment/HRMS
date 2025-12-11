@@ -113,6 +113,11 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
     documents = db.query(EmployeeDocuments).filter(EmployeeDocuments.employee_id == employee_id).all()
     assets = db.query(Assets).filter(Assets.employee_id == employee_id).all()
     
+    # Get department and shift details
+    from src.models.Employee_models import Department, ShiftMaster
+    department = db.query(Department).filter(Department.department_id == employee.department_id).first() if employee.department_id else None
+    shift = db.query(ShiftMaster).filter(ShiftMaster.shift_id == employee.shift_id).first() if employee.shift_id else None
+    
     return {
         "employee_info": {
             "employee_id": employee.employee_id,
@@ -120,11 +125,22 @@ def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
             "last_name": employee.last_name,
             "email_id": employee.email_id,
             "phone_number": employee.phone_number,
-            "department_id": employee.department_id,
+            "department": {
+                "department_id": department.department_id,
+                "department_name": department.department_name
+            } if department else None,
             "designation": employee.designation,
             "joining_date": str(employee.joining_date),
             "reporting_manager": employee.reporting_manager,
             "location": employee.location,
+            "shift": {
+                "shift_id": shift.shift_id,
+                "shift_name": shift.shift_name,
+                "shift_type": shift.shift_type,
+                "start_time": str(shift.start_time),
+                "end_time": str(shift.end_time),
+                "working_days": shift.working_days
+            } if shift else None,
             "employment_type": employee.employment_type,
             "annual_ctc": employee.annual_ctc
         },

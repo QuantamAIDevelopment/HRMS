@@ -127,10 +127,52 @@ def get_employee_complete(employee_id: str, db: Session = Depends(get_db)):
                 "working_days": employee_result.working_days
             } if employee_result.shift_id else None
         },
-        "personal_details": dict(personal_result._mapping) if personal_result else None,
+        "personal_details": {
+            "date_of_birth": str(personal_result.date_of_birth) if personal_result and personal_result.date_of_birth else None,
+            "gender": personal_result.gender if personal_result else None,
+            "marital_status": personal_result.marital_status if personal_result else None,
+            "blood_group": personal_result.blood_group if personal_result else None,
+            "nationality": personal_result.nationality if personal_result else None,
+            "employee_phone": personal_result.employee_phone if personal_result else None,
+            "employee_email": personal_result.employee_email if personal_result else None,
+            "employee_alternate_phone": personal_result.employee_alternate_phone if personal_result else None,
+            "employee_address": personal_result.employee_address if personal_result else None,
+            "city": personal_result.city if personal_result else None,
+            "state": personal_result.state if personal_result else None,
+            "pincode": personal_result.pincode if personal_result else None,
+            "country": personal_result.country if personal_result else None,
+            "emergency_full_name": personal_result.emergency_full_name if personal_result else None,
+            "emergency_relationship": personal_result.emergency_relationship if personal_result else None,
+            "emergency_primary_phone": personal_result.emergency_primary_phone if personal_result else None,
+            "emergency_alternate_phone": personal_result.emergency_alternate_phone if personal_result else None,
+            "emergency_address": personal_result.emergency_address if personal_result else None
+        } if personal_result else None,
         "bank_details": [dict(row._mapping) for row in bank_results],
-        "work_experience": [dict(row._mapping) for row in work_results],
-        "documents": [dict(row._mapping) for row in doc_results],
-        "assets": [dict(row._mapping) for row in asset_results]
+        "work_experience": [{
+            "experience_id": row.experience_id,
+            "experience_designation": row.experience_designation,
+            "company_name": row.company_name,
+            "start_date": str(row.start_date) if row.start_date else None,
+            "end_date": str(row.end_date) if row.end_date else None,
+            "responsibilities": row.responsibilities
+        } for row in work_results],
+        "documents": [{
+            "document_id": row.document_id,
+            "document_name": row.document_name,
+            "file_name": row.file_name,
+            "category": row.category,
+            "upload_date": str(row.upload_date),
+            "status": row.status
+        } for row in doc_results],
+        "assets": [{
+            "asset_id": row.asset_id,
+            "serial_number": row.serial_number,
+            "asset_name": row.asset_name,
+            "asset_type": row.asset_type,
+            "status": row.status,
+            "condition": row.condition,
+            "purchase_date": str(row.purchase_date) if row.purchase_date else None,
+            "value": float(row.value) if row.value else None
+        } for row in asset_results]
     }
 
