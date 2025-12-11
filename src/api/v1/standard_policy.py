@@ -15,7 +15,7 @@ from src.schemas.policy import (
     StandardPolicyUpdate, FlexiblePolicyUpdate
 )
  
-router = APIRouter(prefix="/api/v1/standard-policy", tags=["standard-policy"])
+router = APIRouter(prefix="/api/v1/policy", tags=["policy"])
  
 @router.get("/", response_model=List[PolicyRead])
 def get_policies(db: Session = Depends(get_db)):

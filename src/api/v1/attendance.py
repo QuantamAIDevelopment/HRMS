@@ -136,24 +136,16 @@ def get_attendance(
 
 @router.get("/attendance/breakdown", response_model=AttendanceBreakdown)
 def get_attendance_breakdown(
-    employee_id: Optional[str] = Query(None),
-    employee_name: Optional[str] = Query(None),
+    employee_id: str = Query(...),
     month: Optional[int] = Query(None, ge=1, le=12),
     year: Optional[int] = Query(None, ge=2000),
     db: Session = Depends(get_db),
     current_employee: dict = Depends(check_hr_access)
 ):
-    if not employee_id and not employee_name:
-        raise HTTPException(status_code=400, detail="Either employee_id or employee_name is required")
+    emp_result = db.query(Employee, Department.department_name).join(
+        Department, Employee.department_id == Department.department_id
+    ).filter(Employee.employee_id == employee_id).first()
     
-    emp_query = db.query(Employee, Department.department_name).join(Department, Employee.department_id == Department.department_id)
-    
-    if employee_id:
-        emp_query = emp_query.filter(Employee.employee_id == employee_id)
-    elif employee_name:
-        emp_query = emp_query.filter((Employee.first_name + ' ' + Employee.last_name).ilike(f"%{employee_name}%"))
-    
-    emp_result = emp_query.first()
     if not emp_result:
         raise HTTPException(status_code=404, detail="Employee not found")
     
