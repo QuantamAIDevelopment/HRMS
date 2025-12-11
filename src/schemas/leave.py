@@ -12,6 +12,7 @@ class LeaveCreate(BaseModel):
 class LeaveResponse(BaseModel):
     leave_id: int
     employee_id: str
+    employee_name: Optional[str] = None
     leave_type: str
     start_date: date
     end_date: date
@@ -47,6 +48,7 @@ class ManagerLeaveCreate(BaseModel):
 class ManagerLeaveResponse(BaseModel):
     leave_id: int
     manager_id: str
+    manager_name: Optional[str] = None
     leave_type: str
     start_date: date
     end_date: date
@@ -111,6 +113,7 @@ class HRExecutiveLeaveCreate(BaseModel):
 class HRExecutiveLeaveResponse(BaseModel):
     leave_id: int
     hr_executive_id: str
+    hr_executive_name: Optional[str] = None
     leave_type: str
     start_date: date
     end_date: date

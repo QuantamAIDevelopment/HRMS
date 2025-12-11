@@ -125,9 +125,11 @@ class Assets(Base):
     serial_number = Column(String(50), unique=True, nullable=False)
     status = Column(String(50), default="Available")
     condition = Column(String(50), nullable=True)
-    assigned_employee_id = Column(String(50), ForeignKey("employees.employee_id"), nullable=True)
+    employee_id = Column(String(50), nullable=True)
+    assigned_to = Column(String(50), nullable=True)
     purchase_date = Column(Date, nullable=True)
     value = Column(Numeric(12, 2), nullable=True)
+    note = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 

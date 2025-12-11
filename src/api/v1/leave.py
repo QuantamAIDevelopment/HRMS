@@ -90,9 +90,17 @@ def get_leave_balance(employee_id: str, db: Session = Depends(get_db)):
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": employee_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="Employee not found")
-        result = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND UPPER(status) = 'APPROVED'"), {"emp_id": employee_id}).fetchone()
-        total_used = result[0] if result else 0
-        return LeaveBalance(casual_leave=6, sick_leave=6, earned_leaves=6, total_leaves=18, employee_used_leaves=total_used, used_casual=0, used_sick=total_used, used_earned=0, remaining_casual=6, remaining_sick=6-total_used, remaining_earned=6)
+        # Get annual leaves from employees table
+        emp_result = db.execute(text("SELECT annual_leaves FROM employees WHERE employee_id = :emp_id"), {"emp_id": employee_id}).fetchone()
+        total_leaves = emp_result[0] if emp_result and emp_result[0] else 18
+        each_leave = total_leaves // 3
+        
+        casual_used = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND status = 'APPROVED' AND LOWER(leave_type) = 'casual'"), {"emp_id": employee_id}).fetchone()[0] or 0
+        sick_used = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND status = 'APPROVED' AND LOWER(leave_type) = 'sick'"), {"emp_id": employee_id}).fetchone()[0] or 0
+        earned_used = db.execute(text("SELECT COUNT(*) FROM leave_management WHERE employee_id = :emp_id AND status = 'APPROVED' AND LOWER(leave_type) = 'earned'"), {"emp_id": employee_id}).fetchone()[0] or 0
+        total_used = casual_used + sick_used + earned_used
+        
+        return LeaveBalance(casual_leave=each_leave, sick_leave=each_leave, earned_leaves=each_leave, total_leaves=total_leaves, employee_used_leaves=total_used, used_casual=casual_used, used_sick=sick_used, used_earned=earned_used, remaining_casual=each_leave-casual_used, remaining_sick=each_leave-sick_used, remaining_earned=each_leave-earned_used)
     except HTTPException:
         raise
     except Exception as e:
@@ -139,7 +147,7 @@ def get_pending_manager_leaves(hr_executive_id: str, db: Session = Depends(get_d
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Executive not found")
         designation = emp_result[0]
-        if designation and designation.lower() != 'hr executive':
+        if designation and 'hr executive' not in designation.lower():
             raise HTTPException(status_code=403, detail="Access denied. This endpoint is only for HR Executives.")
         return ManagerService.get_pending_approvals(db, hr_executive_id)
     except HTTPException:
@@ -211,7 +219,7 @@ def get_pending_hr_executive_leaves(hr_manager_id: str, db: Session = Depends(ge
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Manager not found")
         designation = emp_result[0]
-        if designation and designation.lower() != 'hr manager':
+        if designation and 'hr manager' not in designation.lower():
             raise HTTPException(status_code=403, detail="Access denied. This endpoint is only for HR Managers.")
         return HRExecutiveService.get_pending_approvals(db, hr_manager_id)
     except HTTPException:

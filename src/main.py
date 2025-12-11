@@ -27,6 +27,7 @@ from src.api.v1.approval import router as approval_router
 from src.api.v1.shifts import router as shifts_router
 from src.api.v1.off_boarding import router as off_boarding_router
 from src.api.v1.events_holidays import router as events_holidays_router
+from src.api.v1.punch import router as punch_router
 
 try:
     from src.core.logging_config import setup_logging
@@ -126,6 +127,7 @@ app.include_router(events_holidays_router, prefix="/api/v1/events-holidays", tag
 app.include_router(unified_dashboard.router, prefix="/api/v1", tags=["Unified Dashboard"])
 app.include_router(leave_router, prefix="/api/v1")
 app.include_router(asset_router, prefix="/api/v1")
+app.include_router(punch_router, prefix="/api/v1", tags=["punch"])
 
 
 @app.on_event("startup")
