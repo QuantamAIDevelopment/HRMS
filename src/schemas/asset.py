@@ -20,11 +20,9 @@ class AssetUpdate(BaseModel):
     serial_number: Optional[str] = None
     status: Optional[str] = None
     condition: Optional[str] = None
-    employee_id: Optional[str] = None
-    assigned_to: Optional[str] = None
+    assigned_employee_id: Optional[str] = None
     purchase_date: Optional[date] = None
     value: Optional[float] = None
-    note: Optional[str] = None
 
 class AssetResponse(BaseModel):
     asset_id: int

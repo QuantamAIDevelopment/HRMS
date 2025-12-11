@@ -132,6 +132,7 @@ class Assets(Base):
     assigned_to = Column(String(100), nullable=True)
     purchase_date = Column(Date, nullable=True)
     value = Column(Numeric(12, 2), nullable=True)
+    note = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
