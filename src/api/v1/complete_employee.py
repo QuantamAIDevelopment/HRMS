@@ -617,8 +617,11 @@ async def create_complete_employee(
                 full_name=f"{first_name} {last_name}",
                 official_email=email_id  # Official company email for login
             )
+            if not email_sent:
+                logger.warning(f"Email service not configured - credentials not sent to {employee_email}")
         except Exception as e:
-            print(f"Failed to send onboarding email: {e}")
+            logger.error(f"Failed to send onboarding email: {e}")
+            email_sent = False
 
         # Calculate expiry time (1 day from now)
         expiry_time = datetime.now() + timedelta(days=1)
