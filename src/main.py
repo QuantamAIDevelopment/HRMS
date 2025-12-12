@@ -151,8 +151,8 @@ def health_check():
 
 @app.get("/favicon.ico", include_in_schema=False)
 def favicon():
-    from fastapi.responses import FileResponse
-    return FileResponse("favicon.ico", media_type="image/x-icon")
+    from fastapi.responses import Response
+    return Response(status_code=204)
 
 if __name__ == "__main__":
     import uvicorn
