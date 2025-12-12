@@ -16,8 +16,8 @@ class PolicyCreate(BaseModel):
    
     # Overtime Policy
     overtime_enabled: bool
-    overtime_multiplier_weekdays: Optional[float] = Field(None, gt=1.0)
-    overtime_multiplier_weekend: Optional[float] = Field(None, gt=1.0)
+    overtime_multiplier_weekdays: Optional[float] = Field(None, ge=0)
+    overtime_multiplier_weekend: Optional[float] = Field(None, ge=0)
    
     # Tracking Policy
     require_check_in: bool

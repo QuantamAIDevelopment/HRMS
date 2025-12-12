@@ -146,9 +146,12 @@ def get_pending_manager_leaves(hr_executive_id: str, db: Session = Depends(get_d
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": hr_executive_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Executive not found")
-        designation = emp_result[0]
-        if designation and 'hr executive' not in designation.lower():
-            raise HTTPException(status_code=403, detail="Access denied. This endpoint is only for HR Executives.")
+        designation = emp_result[0].lower().replace('_', ' ').replace('-', ' ') if emp_result[0] else ""
+        # Check for HR Executive variations
+        hr_executive_keywords = ['hr executive', 'hr_executive', 'hr-executive', 'hrexecutive', 'hr excutive', 'hr_excutive', 'hr-excutive', 'hrexcutive']
+        is_hr_executive = any(keyword in designation for keyword in hr_executive_keywords)
+        if not is_hr_executive:
+            raise HTTPException(status_code=403, detail=f"Access denied. Employee designation '{emp_result[0]}' is not authorized for this endpoint. This endpoint is only for HR Executives.")
         return ManagerService.get_pending_approvals(db, hr_executive_id)
     except HTTPException:
         raise
@@ -188,9 +191,11 @@ def hr_executive_apply_leave(leave: HRExecutiveLeaveCreate, db: Session = Depend
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": leave.hr_executive_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Executive not found")
-        designation = emp_result[0]
-        if designation and designation.lower() != 'hr executive':
-            raise HTTPException(status_code=403, detail="Access denied. Only HR Executives can apply for leave through this endpoint.")
+        designation = emp_result[0].lower().replace('_', ' ').replace('-', ' ') if emp_result[0] else ""
+        hr_executive_keywords = ['hr executive', 'hr_executive', 'hr-executive', 'hrexecutive', 'hr excutive', 'hr_excutive', 'hr-excutive', 'hrexcutive']
+        is_hr_executive = any(keyword in designation for keyword in hr_executive_keywords)
+        if not is_hr_executive:
+            raise HTTPException(status_code=403, detail=f"Access denied. Employee designation '{emp_result[0]}' is not authorized. Only HR Executives can apply for leave through this endpoint.")
         return HRExecutiveService.create_leave(db, leave)
     except HTTPException:
         raise
@@ -203,9 +208,13 @@ def get_hr_executive_leave_history(hr_executive_id: str, db: Session = Depends(g
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": hr_executive_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Executive not found")
-        designation = emp_result[0]
-        if designation and designation.lower() != 'hr executive':
-            raise HTTPException(status_code=403, detail="Access denied. This endpoint is only for HR executives.")
+        designation = emp_result[0].lower().replace('_', ' ').replace('-', ' ') if emp_result[0] else ""
+        hr_executive_keywords = ['hr executive', 'hr_executive', 'hr-executive', 'hrexecutive', 'hr excutive', 'hr_excutive', 'hr-excutive', 'hrexcutive']
+        hr_manager_keywords = ['hr manager', 'hr_manager', 'hr-manager', 'hrmanager']
+        is_hr_executive = any(keyword in designation for keyword in hr_executive_keywords)
+        is_hr_manager = any(keyword in designation for keyword in hr_manager_keywords)
+        if not (is_hr_executive or is_hr_manager):
+            raise HTTPException(status_code=403, detail=f"Access denied. Employee designation '{emp_result[0]}' is not authorized for this endpoint.")
         return HRExecutiveService.get_leave_history(db, hr_executive_id)
     except HTTPException:
         raise
@@ -218,9 +227,11 @@ def get_pending_hr_executive_leaves(hr_manager_id: str, db: Session = Depends(ge
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": hr_manager_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Manager not found")
-        designation = emp_result[0]
-        if designation and 'hr manager' not in designation.lower():
-            raise HTTPException(status_code=403, detail="Access denied. This endpoint is only for HR Managers.")
+        designation = emp_result[0].lower().replace('_', ' ').replace('-', ' ') if emp_result[0] else ""
+        hr_manager_keywords = ['hr manager', 'hr_manager', 'hr-manager', 'hrmanager']
+        is_hr_manager = any(keyword in designation for keyword in hr_manager_keywords)
+        if not is_hr_manager:
+            raise HTTPException(status_code=403, detail=f"Access denied. Employee designation '{emp_result[0]}' is not authorized for this endpoint. This endpoint is only for HR Managers.")
         return HRExecutiveService.get_pending_approvals(db, hr_manager_id)
     except HTTPException:
         raise
@@ -233,9 +244,13 @@ def get_hr_executive_leave_balance(hr_executive_id: str, db: Session = Depends(g
         emp_result = db.execute(text("SELECT designation FROM employees WHERE employee_id = :emp_id"), {"emp_id": hr_executive_id}).fetchone()
         if not emp_result:
             raise HTTPException(status_code=404, detail="HR Executive not found")
-        designation = emp_result[0]
-        if designation and designation.lower() != 'hr executive':
-            raise HTTPException(status_code=403, detail="Access denied. This endpoint is only for HR executives.")
+        designation = emp_result[0].lower().replace('_', ' ').replace('-', ' ') if emp_result[0] else ""
+        hr_executive_keywords = ['hr executive', 'hr_executive', 'hr-executive', 'hrexecutive', 'hr excutive', 'hr_excutive', 'hr-excutive', 'hrexcutive']
+        hr_manager_keywords = ['hr manager', 'hr_manager', 'hr-manager', 'hrmanager']
+        is_hr_executive = any(keyword in designation for keyword in hr_executive_keywords)
+        is_hr_manager = any(keyword in designation for keyword in hr_manager_keywords)
+        if not (is_hr_executive or is_hr_manager):
+            raise HTTPException(status_code=403, detail=f"Access denied. Employee designation '{emp_result[0]}' is not authorized for this endpoint.")
         return HRExecutiveService.get_leave_balance(db, hr_executive_id)
     except HTTPException:
         raise

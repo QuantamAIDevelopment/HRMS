@@ -62,31 +62,30 @@ def login(request: LoginRequest, db: Session = Depends(get_db)):
         expires_delta=timedelta(days=7)
     )
    
-    # Set redirect URL based on role
-    role_lower = user.role.lower()
-    print(f"Debug - User role: '{user.role}', role_lower: '{role_lower}'")
+    # Set redirect URL based on designation (stored as role)
+    designation = user.role.lower()  # Normalize to lowercase for consistent matching
+    print(f"Debug - User designation/role: '{user.role}', normalized: '{designation}'")
    
-    if "hr executive" in role_lower:
-        redirect_url = "/hr-executive-dashboard"
-        print(f"Debug - Matched HR Executive, redirect_url: {redirect_url}")
-    elif "hr manager" in role_lower:
-        redirect_url = "/hr-manager-dashboard"
-        print(f"Debug - Matched HR Manager, redirect_url: {redirect_url}")
-    elif "team lead" in role_lower:
-        redirect_url = "/team-lead-dashboard"
-        print(f"Debug - Matched Team Lead, redirect_url: {redirect_url}")
-    elif "manager" in role_lower:
+    # HR roles
+    if "hr" in designation:
+        if any(keyword in designation for keyword in ["manager", "head", "director"]):
+            redirect_url = "/hr-manager-dashboard"
+            print(f"Debug - Matched HR Manager, redirect_url: {redirect_url}")
+        else:
+            redirect_url = "/hr-executive-dashboard"
+            print(f"Debug - Matched HR Executive, redirect_url: {redirect_url}")
+    # Manager roles
+    elif any(keyword in designation for keyword in ["manager", "head", "director", "lead", "supervisor"]):
         redirect_url = "/manager-dashboard"
         print(f"Debug - Matched Manager, redirect_url: {redirect_url}")
-    elif "non-employee" in role_lower:
-        redirect_url = "/non-employee-modal"
-        print(f"Debug - Matched Non-Employee, redirect_url: {redirect_url}")
-    elif "employee" in role_lower and "non-employee" not in role_lower:
-        redirect_url = "/employee-dashboard"
-        print(f"Debug - Matched Employee, redirect_url: {redirect_url}")
+    # Admin roles
+    elif any(keyword in designation for keyword in ["admin", "administrator"]):
+        redirect_url = "/admin-dashboard"
+        print(f"Debug - Matched Admin, redirect_url: {redirect_url}")
+    # Default to employee dashboard
     else:
-        redirect_url = "/employee-dashboard"  # Default fallback
-        print(f"Debug - Default fallback, redirect_url: {redirect_url}")
+        redirect_url = "/employee-dashboard"
+        print(f"Debug - Default to Employee dashboard for designation: {designation}")
    
     print(f"Debug - Final redirect_url before return: {redirect_url}")
    

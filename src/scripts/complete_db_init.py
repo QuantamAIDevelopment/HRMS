@@ -64,10 +64,10 @@ async def create_complete_schema():
             'users': """
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
-                    employee_id VARCHAR(50) UNIQUE,
+                    employee_id VARCHAR(50) UNIQUE NOT NULL,
                     email VARCHAR(255) UNIQUE NOT NULL,
                     hashed_password VARCHAR(255) NOT NULL,
-                    full_name VARCHAR(255) NOT NULL DEFAULT '',
+                    full_name VARCHAR(255) NOT NULL,
                     role VARCHAR(50) NOT NULL DEFAULT 'EMPLOYEE',
                     is_active BOOLEAN DEFAULT TRUE,
                     is_superuser BOOLEAN DEFAULT FALSE,
@@ -91,6 +91,7 @@ async def create_complete_schema():
                     start_time TIME NOT NULL,
                     end_time TIME NOT NULL,
                     working_days VARCHAR(200) DEFAULT 'Monday-Friday',
+                    employees INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
@@ -98,10 +99,13 @@ async def create_complete_schema():
             
             'job_titles': """
                 CREATE TABLE IF NOT EXISTS job_titles (
-                    id SERIAL PRIMARY KEY,
-                    title VARCHAR(255) NOT NULL,
-                    description TEXT,
-                    department VARCHAR(255),
+                    job_title_id SERIAL PRIMARY KEY,
+                    job_title VARCHAR(150) NOT NULL,
+                    job_description TEXT NOT NULL,
+                    department VARCHAR(100) NOT NULL,
+                    salary_min NUMERIC(10,2),
+                    salary_max NUMERIC(10,2),
+                    employees INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
@@ -112,7 +116,18 @@ async def create_complete_schema():
                     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
                     name VARCHAR(255) UNIQUE NOT NULL,
                     description TEXT,
-                    policy_type VARCHAR(100),
+                    working_hours_per_day FLOAT NOT NULL,
+                    working_days_per_week INTEGER NOT NULL,
+                    is_active BOOLEAN DEFAULT FALSE,
+                    grace_period_minutes INTEGER NOT NULL,
+                    mark_late_after_minutes INTEGER NOT NULL,
+                    half_day_hours FLOAT NOT NULL,
+                    auto_deduct_for_absence BOOLEAN NOT NULL,
+                    overtime_enabled BOOLEAN NOT NULL,
+                    overtime_multiplier_weekdays FLOAT,
+                    overtime_multiplier_weekend FLOAT,
+                    require_check_in BOOLEAN NOT NULL,
+                    require_check_out BOOLEAN NOT NULL,
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
@@ -144,7 +159,7 @@ async def create_complete_schema():
                     phone_number VARCHAR(20) NOT NULL,
                     location VARCHAR(50),
                     shift_id INTEGER REFERENCES shift_master(shift_id),
-                    employee_type VARCHAR(50) NOT NULL,
+                    employment_type VARCHAR(50) NOT NULL,
                     annual_ctc VARCHAR(50) DEFAULT '0',
                     annual_leaves INTEGER DEFAULT 21,
                     profile_photo VARCHAR(255),
@@ -204,11 +219,13 @@ async def create_complete_schema():
                     serial_number VARCHAR(50) UNIQUE,
                     asset_name VARCHAR(50) NOT NULL,
                     asset_type VARCHAR(50) NOT NULL,
-                    assigned_employee_id VARCHAR(50) REFERENCES employees(employee_id) ON DELETE SET NULL,
-                    status VARCHAR(50) DEFAULT 'Available' CHECK (status IN ('Assigned', 'Available', 'Maintenance')),
-                    condition VARCHAR(50) DEFAULT 'Good' CHECK (condition IN ('Excellent', 'Good', 'Fair')),
+                    employee_id VARCHAR(50) REFERENCES employees(employee_id) ON DELETE SET NULL,
+                    assigned_to VARCHAR(100),
+                    status VARCHAR(50) DEFAULT 'Available',
+                    condition VARCHAR(50),
                     purchase_date DATE,
                     value NUMERIC(12,2),
+                    note TEXT,
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
@@ -296,7 +313,7 @@ async def create_complete_schema():
                     expense_code VARCHAR(20),
                     employee_id VARCHAR(50) REFERENCES employees(employee_id) ON DELETE CASCADE,
                     category VARCHAR(100) NOT NULL,
-                    description TEXT,
+                    description TEXT NOT NULL,
                     amount NUMERIC(12,2) NOT NULL,
                     expense_date DATE NOT NULL,
                     receipt_url TEXT,
@@ -311,25 +328,24 @@ async def create_complete_schema():
                     payroll_id SERIAL PRIMARY KEY,
                     employee_id VARCHAR(50) REFERENCES employees(employee_id) ON DELETE CASCADE,
                     designation VARCHAR(100) NOT NULL,
-                    pay_cycle VARCHAR(20) DEFAULT 'Monthly' CHECK (pay_cycle IN ('Monthly', 'Weekly', 'Biweekly')),
-                    basic_salary NUMERIC(12,2) DEFAULT 0,
-                    hra NUMERIC(12,2) DEFAULT 0,
-                    allowance NUMERIC(12,2) DEFAULT 0,
-                    bonus_percentage NUMERIC(5,2) DEFAULT 0,
-                    is_bonus_taxable BOOLEAN DEFAULT FALSE,
-                    is_allowance_taxable BOOLEAN DEFAULT FALSE,
-                    is_hra_taxable BOOLEAN DEFAULT FALSE,
-                    is_basic_taxable BOOLEAN DEFAULT FALSE,
-                    provident_fund_percentage NUMERIC(5,2) DEFAULT 0,
-                    professional_tax NUMERIC(12,2) DEFAULT 0,
-                    income_tax NUMERIC(12,2) DEFAULT 0,
-                    lop_amount NUMERIC(12,2) DEFAULT 0,
-                    is_pf_locked BOOLEAN DEFAULT FALSE,
-                    is_pt_locked BOOLEAN DEFAULT FALSE,
-                    is_income_tax_auto BOOLEAN DEFAULT FALSE,
-                    total_earnings NUMERIC(12,2) DEFAULT 0,
-                    total_deductions NUMERIC(12,2) DEFAULT 0,
-                    net_salary NUMERIC(12,2) DEFAULT 0,
+                    pay_cycle VARCHAR(20) DEFAULT 'Monthly',
+                    basic_salary NUMERIC(12,2),
+                    hra NUMERIC(12,2),
+                    allowance NUMERIC(12,2),
+                    provident_fund_percentage NUMERIC(5,2),
+                    professional_tax NUMERIC(12,2),
+                    total_earnings NUMERIC(12,2),
+                    total_deductions NUMERIC(12,2),
+                    net_salary NUMERIC(12,2),
+                    pdf_path TEXT,
+                    month VARCHAR(20),
+                    basic_salary_type VARCHAR(50),
+                    hra_type VARCHAR(50),
+                    allowance_type VARCHAR(50),
+                    provident_fund_type VARCHAR(50),
+                    professional_tax_type VARCHAR(50),
+                    salary_components JSONB,
+                    organization_name VARCHAR(100),
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
@@ -337,15 +353,15 @@ async def create_complete_schema():
             
             'time_entries': """
                 CREATE TABLE IF NOT EXISTS time_entries (
-                    time_entry_id SERIAL PRIMARY KEY,
+                    time_entry_id VARCHAR(50) PRIMARY KEY,
                     employee_id VARCHAR(50) REFERENCES employees(employee_id) ON DELETE CASCADE,
                     entry_date DATE NOT NULL,
                     project VARCHAR(150) NOT NULL,
                     task_description TEXT NOT NULL,
                     hours NUMERIC(5,2) NOT NULL,
+                    status VARCHAR(50) DEFAULT 'PENDING_MANAGER_APPROVAL',
                     approver_id VARCHAR(50),
-                    approver_type VARCHAR(20) DEFAULT 'MANAGER',
-                    status VARCHAR(50) DEFAULT 'PENDING',
+                    approver_type VARCHAR(20),
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
@@ -403,6 +419,20 @@ async def create_complete_schema():
                     created_at TIMESTAMP DEFAULT NOW(),
                     updated_at TIMESTAMP DEFAULT NOW()
                 )
+            """,
+            
+            'profile_edit_requests': """
+                CREATE TABLE IF NOT EXISTS profile_edit_requests (
+                    id SERIAL PRIMARY KEY,
+                    employee_id VARCHAR(50) REFERENCES employees(employee_id) ON DELETE CASCADE,
+                    requested_changes TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    old_value VARCHAR(255),
+                    new_value VARCHAR(255),
+                    status VARCHAR(20) DEFAULT 'pending' NOT NULL,
+                    manager_comments TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
+                )
             """
         }
         
@@ -413,7 +443,7 @@ async def create_complete_schema():
             'educational_qualifications', 'employee_documents', 'employee_work_experience',
             'attendance', 'leave_management', 'employee_expenses', 'payroll_setup', 
             'time_entries', 'off_boarding', 'onboarding_process', 
-            'compliance_documents_and_policy_management'
+            'compliance_documents_and_policy_management', 'profile_edit_requests'
         ]
         
         with engine.connect() as conn:
@@ -437,7 +467,7 @@ async def create_complete_schema():
             "CREATE INDEX IF NOT EXISTS idx_employees_shift ON employees (shift_id)",
             "CREATE INDEX IF NOT EXISTS idx_attendance_employee ON attendance (employee_id)",
             "CREATE INDEX IF NOT EXISTS idx_attendance_date ON attendance (attendance_date)",
-            "CREATE INDEX IF NOT EXISTS idx_assets_employee ON assets (assigned_employee_id)",
+            "CREATE INDEX IF NOT EXISTS idx_assets_employee ON assets (employee_id)",
             "CREATE INDEX IF NOT EXISTS idx_time_entries_employee ON time_entries (employee_id)",
             "CREATE INDEX IF NOT EXISTS idx_time_entries_date ON time_entries (entry_date)",
             "CREATE INDEX IF NOT EXISTS idx_edu_employee ON educational_qualifications (employee_id)",
@@ -474,7 +504,8 @@ async def verify_schema():
             'time_entries', 'policy_master', 'events_holidays', 'off_boarding',
             'onboarding_process', 'compliance_documents_and_policy_management',
             'employee_personal_details', 'bank_details', 'assets', 
-            'educational_qualifications', 'employee_documents', 'employee_work_experience'
+            'educational_qualifications', 'employee_documents', 'employee_work_experience',
+            'profile_edit_requests'
         ]
         
         missing_tables = [table for table in expected_tables if table not in tables]

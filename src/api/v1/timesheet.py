@@ -27,24 +27,6 @@ def create_timesheet(timesheet: TimesheetCreate, db: Session = Depends(get_db)):
                 detail=f"Employee {timesheet.employee_id} not found"
             )
         
-        # Check if employee is on approved leave for the timesheet date
-        approved_leave = db.execute(
-            text("""
-                SELECT leave_id FROM leave_management 
-                WHERE employee_id = :emp_id 
-                AND UPPER(status) = 'APPROVED' 
-                AND DATE(:entry_date) BETWEEN start_date AND end_date
-            """),
-            {"emp_id": timesheet.employee_id, "entry_date": str(timesheet.entry_date)}
-        ).fetchone()
-        
-        if approved_leave:
-            return {
-                "success": False,
-                "message": "Cannot create timesheet for approved leave date",
-                "blocked": True
-            }
-
         # Get employee's reporting manager
         manager_query = db.execute(
             text("SELECT reporting_manager FROM employees WHERE employee_id = :emp_id"),
@@ -52,27 +34,57 @@ def create_timesheet(timesheet: TimesheetCreate, db: Session = Depends(get_db)):
         ).fetchone()
         
         # Check if employee is a manager (has direct reports)
-        is_manager = db.execute(
+        is_manager_result = db.execute(
             text("SELECT COUNT(*) as count FROM employees WHERE reporting_manager = :emp_id"),
             {"emp_id": timesheet.employee_id}
-        ).fetchone().count > 0
+        ).fetchone()
+        is_manager = is_manager_result[0] > 0 if is_manager_result else False
         
-        timesheet_data = timesheet.dict(exclude_unset=True)
-        timesheet_data["time_entry_id"] = Timesheet.generate_time_entry_id(db)
-        
+        # Prepare data for insertion using raw SQL to match database schema
         if is_manager:
-            timesheet_data["status"] = "PENDING_HR_APPROVAL"
-            timesheet_data["approver_type"] = "HR_MANAGER"
+            status = "PENDING_HR_APPROVAL"
+            approver_type = "HR_MANAGER"
+            approver_id = None
         else:
-            timesheet_data["status"] = "PENDING_MANAGER_APPROVAL"
-            timesheet_data["approver_id"] = manager_query.reporting_manager if manager_query else None
-            timesheet_data["approver_type"] = "MANAGER"
+            status = "PENDING_MANAGER_APPROVAL"
+            approver_id = manager_query[0] if manager_query else None
+            approver_type = "MANAGER"
         
-        db_timesheet = Timesheet(**timesheet_data)
-        db.add(db_timesheet)
+        # Insert using raw SQL to handle SERIAL primary key
+        insert_query = text("""
+            INSERT INTO time_entries (employee_id, entry_date, project, task_description, hours, status, approver_id, approver_type)
+            VALUES (:employee_id, :entry_date, :project, :task_description, :hours, :status, :approver_id, :approver_type)
+            RETURNING time_entry_id, employee_id, entry_date, project, task_description, hours, status, approver_id, approver_type, created_at, updated_at
+        """)
+        
+        result = db.execute(insert_query, {
+            "employee_id": timesheet.employee_id,
+            "entry_date": timesheet.entry_date,
+            "project": timesheet.project,
+            "task_description": timesheet.task_description,
+            "hours": timesheet.hours,
+            "status": status,
+            "approver_id": approver_id,
+            "approver_type": approver_type
+        })
+        
         db.commit()
-        db.refresh(db_timesheet)
-        return db_timesheet
+        row = result.fetchone()
+        
+        return {
+            "time_entry_id": row.time_entry_id,
+            "employee_id": row.employee_id,
+            "entry_date": row.entry_date,
+            "project": row.project,
+            "task_description": row.task_description,
+            "hours": float(row.hours),
+            "status": row.status,
+            "approver_id": row.approver_id,
+            "approver_type": row.approver_type,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at
+        }
+        
     except HTTPException:
         db.rollback()
         raise
@@ -80,10 +92,24 @@ def create_timesheet(timesheet: TimesheetCreate, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.get("/", response_model=List[TimesheetResponse])
+@router.get("/")
 def get_timesheets(db: Session = Depends(get_db)):
-    timesheets = db.query(Timesheet).all()
-    return timesheets
+    query = text("SELECT * FROM time_entries ORDER BY created_at DESC")
+    result = db.execute(query).fetchall()
+    
+    return [{
+        "time_entry_id": row.time_entry_id,
+        "employee_id": row.employee_id,
+        "entry_date": row.entry_date,
+        "project": row.project,
+        "task_description": row.task_description,
+        "hours": float(row.hours),
+        "status": row.status,
+        "approver_id": row.approver_id,
+        "approver_type": row.approver_type,
+        "created_at": row.created_at,
+        "updated_at": row.updated_at
+    } for row in result]
 
 @router.get("/cards")
 def get_timesheet_cards(db: Session = Depends(get_db)):
@@ -104,7 +130,7 @@ def get_timesheet_cards(db: Session = Depends(get_db)):
     }
 
 
-@router.put("/edit/{employee_id}", response_model=TimesheetResponse, status_code=status.HTTP_200_OK)
+@router.put("/edit/{employee_id}", status_code=status.HTTP_200_OK)
 def edit_timesheet(employee_id: str, timesheet_update: TimesheetUpdate, entry_date: str = Query(...), db: Session = Depends(get_db)):
     """Edit timesheet entry by employee ID and entry date"""
     try:
@@ -121,26 +147,64 @@ def edit_timesheet(employee_id: str, timesheet_update: TimesheetUpdate, entry_da
         raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD or DD-MM-YYYY")
     
     try:
-        timesheet = db.query(Timesheet).filter(
-            Timesheet.employee_id == employee_id,
-            Timesheet.entry_date == entry_date_obj
-        ).first()
+        # Check if timesheet exists and get current status
+        check_query = text("SELECT time_entry_id, status FROM time_entries WHERE employee_id = :emp_id AND entry_date = :entry_date")
+        existing = db.execute(check_query, {"emp_id": employee_id, "entry_date": entry_date_obj}).fetchone()
         
-        if not timesheet:
+        if not existing:
             raise HTTPException(status_code=404, detail="Timesheet not found")
         
-        # Update fields (exclude employee_id and entry_date to prevent violations)
+        # Update using raw SQL
         update_data = timesheet_update.dict(exclude_unset=True)
         update_data.pop('employee_id', None)
         update_data.pop('entry_date', None)
         update_data.pop('time_entry_id', None)
         
-        for field, value in update_data.items():
-            setattr(timesheet, field, value)
+        if update_data:
+            # If timesheet is being updated after submission, reset status to pending
+            if existing.status in ["REJECTED", "APPROVED", "PENDING_MANAGER_APPROVAL", "PENDING_HR_APPROVAL"]:
+                # Check if employee is a manager to determine correct pending status
+                is_manager_result = db.execute(
+                    text("SELECT COUNT(*) as count FROM employees WHERE reporting_manager = :emp_id"),
+                    {"emp_id": employee_id}
+                ).fetchone()
+                is_manager = is_manager_result[0] > 0 if is_manager_result else False
+                
+                # Set appropriate pending status
+                update_data["status"] = "PENDING_HR_APPROVAL" if is_manager else "PENDING_MANAGER_APPROVAL"
+            
+            set_clauses = []
+            params = {"emp_id": employee_id, "entry_date": entry_date_obj}
+            
+            for field, value in update_data.items():
+                set_clauses.append(f"{field} = :{field}")
+                params[field] = value
+            
+            update_query = text(f"""
+                UPDATE time_entries 
+                SET {', '.join(set_clauses)}, updated_at = NOW()
+                WHERE employee_id = :emp_id AND entry_date = :entry_date
+                RETURNING *
+            """)
+            
+            result = db.execute(update_query, params)
+            db.commit()
+            row = result.fetchone()
+            
+            return {
+                "time_entry_id": row.time_entry_id,
+                "employee_id": row.employee_id,
+                "entry_date": row.entry_date,
+                "project": row.project,
+                "task_description": row.task_description,
+                "hours": float(row.hours),
+                "status": row.status,
+                "approver_id": row.approver_id,
+                "approver_type": row.approver_type,
+                "created_at": row.created_at,
+                "updated_at": row.updated_at
+            }
         
-        db.commit()
-        db.refresh(timesheet)
-        return timesheet
     except HTTPException:
         db.rollback()
         raise
@@ -148,19 +212,61 @@ def edit_timesheet(employee_id: str, timesheet_update: TimesheetUpdate, entry_da
         db.rollback()
         raise HTTPException(status_code=500, detail=str(e))
 
-@router.put("/{employee_id}", response_model=TimesheetResponse)
+@router.put("/{employee_id}")
 def update_timesheet_status(employee_id: str, status_update: TimesheetStatusUpdate, db: Session = Depends(get_db)):
     try:
-        timesheet = db.query(Timesheet).filter(Timesheet.employee_id == employee_id, Timesheet.entry_date == status_update.entry_date).first()
-        if not timesheet:
+        # Check current status for resubmit logic
+        check_query = text("SELECT status FROM time_entries WHERE employee_id = :emp_id AND entry_date = :entry_date")
+        current = db.execute(check_query, {"emp_id": employee_id, "entry_date": status_update.entry_date}).fetchone()
+        
+        if not current:
             raise HTTPException(status_code=404, detail="Timesheet not found")
         
-        # Update status and trigger updated_at
-        db.query(Timesheet).filter(Timesheet.employee_id == employee_id, Timesheet.entry_date == status_update.entry_date).update({"status": status_update.status})
+        final_status = status_update.status
         
+        # Resubmit logic: if current status is REJECTED and new status is RESUBMIT
+        if current.status == "REJECTED" and status_update.status == "RESUBMIT":
+            # Check if employee is a manager to determine correct pending status
+            is_manager_result = db.execute(
+                text("SELECT COUNT(*) as count FROM employees WHERE reporting_manager = :emp_id"),
+                {"emp_id": employee_id}
+            ).fetchone()
+            is_manager = is_manager_result[0] > 0 if is_manager_result else False
+            
+            # Set appropriate pending status
+            final_status = "PENDING_HR_APPROVAL" if is_manager else "PENDING_MANAGER_APPROVAL"
+        
+        # Update using raw SQL
+        update_query = text("""
+            UPDATE time_entries 
+            SET status = :status, updated_at = NOW()
+            WHERE employee_id = :emp_id AND entry_date = :entry_date
+            RETURNING *
+        """)
+        
+        result = db.execute(update_query, {
+            "status": final_status,
+            "emp_id": employee_id,
+            "entry_date": status_update.entry_date
+        })
+        
+        row = result.fetchone()
         db.commit()
-        db.refresh(timesheet)
-        return timesheet
+        
+        return {
+            "time_entry_id": row.time_entry_id,
+            "employee_id": row.employee_id,
+            "entry_date": row.entry_date,
+            "project": row.project,
+            "task_description": row.task_description,
+            "hours": float(row.hours),
+            "status": row.status,
+            "approver_id": row.approver_id,
+            "approver_type": row.approver_type,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at
+        }
+        
     except HTTPException:
         db.rollback()
         raise

@@ -76,3 +76,29 @@ def generate_otp(length: int = 6) -> str:
 
 def generate_reset_token(length: int = 32) -> str:
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
+
+def map_designation_to_role(designation: str) -> str:
+    """Map employee designation to appropriate user role"""
+    designation_lower = designation.lower().replace(' ', '')
+    
+    # HR Manager variations (case-insensitive, with/without spaces)
+    hr_manager_variations = ['hrmanager', 'hrmanger', 'hrmanager', 'humanresourcemanager']
+    if any(var in designation_lower for var in hr_manager_variations):
+        return "HR_MANAGER"
+    
+    # HR Executive variations (case-insensitive, with/without spaces)
+    hr_executive_variations = ['hrexecutive', 'hrexctive', 'hrexective', 'humanresourceexecutive']
+    if any(var in designation_lower for var in hr_executive_variations):
+        return "HR_EXECUTIVE"
+    
+    # Manager variations (case-insensitive)
+    manager_variations = ['manager', 'manger', 'head', 'director', 'lead', 'supervisor']
+    if any(var in designation_lower for var in manager_variations):
+        return "MANAGER"
+    
+    # Admin roles
+    if any(keyword in designation_lower for keyword in ['admin', 'administrator']):
+        return "ADMIN"
+    
+    # Default to employee
+    return "EMPLOYEE"

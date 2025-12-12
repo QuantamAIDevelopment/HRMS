@@ -220,6 +220,28 @@ def generate_temp_password(length=8):
     characters = string.ascii_letters + string.digits + "!@#$%"
     return ''.join(secrets.choice(characters) for _ in range(length))
 
+def map_designation_to_role(designation: str) -> str:
+    """Map employee designation to appropriate user role"""
+    designation_lower = designation.lower()
+    
+    # Manager roles
+    if any(keyword in designation_lower for keyword in ['manager', 'head', 'director', 'lead', 'supervisor']):
+        return "MANAGER"
+    
+    # HR roles
+    if any(keyword in designation_lower for keyword in ['hr', 'human resource']):
+        if any(keyword in designation_lower for keyword in ['manager', 'head', 'director']):
+            return "HR_MANAGER"
+        else:
+            return "HR_EXECUTIVE"
+    
+    # Admin roles
+    if any(keyword in designation_lower for keyword in ['admin', 'administrator']):
+        return "ADMIN"
+    
+    # Default to employee
+    return "EMPLOYEE"
+
 @router.post("/complete-employee", summary="Create Complete Employee", description="Create a complete employee record with all details including annual CTC")
 async def create_complete_employee(
     request: Request,
@@ -579,7 +601,7 @@ async def create_complete_employee(
                     detail=f"Asset with serial number {asset_req.get('serial_number')} and type {asset_req.get('asset_type')} is not available"
                 )
 
-        # 8. Generate dummy password and create User
+        # 8. Generate dummy password and create User with designation as role
         dummy_password = "TempPass123!"
         hashed_password = get_password_hash(dummy_password)
         
@@ -588,7 +610,7 @@ async def create_complete_employee(
             email=email_id,
             hashed_password=hashed_password,
             full_name=f"{first_name} {last_name}",
-            role="EMPLOYEE"
+            role=designation
         )
         db.add(user)
 

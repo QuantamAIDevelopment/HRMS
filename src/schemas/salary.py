@@ -13,6 +13,12 @@ class SalaryCreate(BaseModel):
     provident_fund_percentage: Optional[Decimal] = None
     professional_tax: Optional[Decimal] = None
     month: str
+    basic_salary_type: Optional[str] = None
+    hra_type: Optional[str] = None
+    allowance_type: Optional[str] = None
+    provident_fund_type: Optional[str] = None
+    professional_tax_type: Optional[str] = None
+    salary_components: Optional[dict] = {}
     organization_name: Optional[str] = None
 
 class SalaryResponse(BaseModel):
@@ -28,7 +34,14 @@ class SalaryResponse(BaseModel):
     total_earnings: Optional[Decimal]
     total_deductions: Optional[Decimal]
     net_salary: Optional[Decimal]
+    pdf_path: Optional[str]
     month: str
+    basic_salary_type: Optional[str]
+    hra_type: Optional[str]
+    allowance_type: Optional[str]
+    provident_fund_type: Optional[str]
+    professional_tax_type: Optional[str]
+    salary_components: Optional[dict]
     organization_name: Optional[str]
     created_at: datetime
     updated_at: datetime

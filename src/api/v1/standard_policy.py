@@ -22,9 +22,9 @@ def get_policies(db: Session = Depends(get_db)):
     service = PoliciesService(db)
     return service.get_all_policies()
 
-@router.post("/", response_model=PolicyRead)
-def update_policy(
-    policy_data: PolicyUpdate,
+@router.post("/")
+def create_or_update_policy(
+    policy_data: PolicyCreate,
     db: Session = Depends(get_db)
 ):
     service = PoliciesService(db)
@@ -32,9 +32,12 @@ def update_policy(
     if not policy_data.name:
         raise HTTPException(status_code=400, detail="Policy name is required")
     
+    # Try to update existing policy first
     policy = service.update_policy_by_name(policy_data.name, policy_data)
+    
+    # If policy doesn't exist, create it
     if not policy:
-        raise HTTPException(status_code=404, detail=f"Policy '{policy_data.name}' not found")
+        policy = service.create_policy(policy_data)
     
     return policy
  
