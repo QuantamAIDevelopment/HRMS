@@ -73,18 +73,25 @@ def get_all_onboarding_records(db: Session = Depends(get_db)):
 
 @router.get("/get-available-assets")
 def get_available_assets(db: Session = Depends(get_db)):
-    available_assets = db.query(Assets).filter(Assets.status == "Available").all()
-    return {
-        "total_available": len(available_assets),
-        "assets": [{
-            "asset_id": asset.asset_id,
-            "serial_number": asset.serial_number,
-            "asset_name": asset.asset_name,
-            "asset_type": asset.asset_type,
-            "condition": asset.condition,
-            "value": float(asset.value) if asset.value else None
-        } for asset in available_assets]
-    }
+    try:
+        available_assets = db.query(Assets).filter(Assets.status == "Available").all()
+        return {
+            "total_available": len(available_assets),
+            "assets": [{
+                "asset_id": asset.asset_id,
+                "serial_number": asset.serial_number,
+                "asset_name": asset.asset_name,
+                "asset_type": asset.asset_type,
+                "condition": asset.condition,
+                "value": float(asset.value) if asset.value else 0.0
+            } for asset in available_assets]
+        }
+    except Exception as e:
+        return {
+            "error": str(e),
+            "total_available": 0,
+            "assets": []
+        }
 
 @router.get("/statistics")
 def get_onboarding_statistics(db: Session = Depends(get_db)):
@@ -92,6 +99,60 @@ def get_onboarding_statistics(db: Session = Depends(get_db)):
     
     return {
         "total_employees": total_employees
+    }
+
+@router.get("/managers")
+def get_manager_employees(db: Session = Depends(get_db)):
+    """Get all employees who are managers (excluding HR managers)"""
+    from src.models.Employee_models import Department
+    from sqlalchemy import func, or_
+    
+    # Get all employees who are not in HR department and have designation containing 'Manager' in any case
+    managers = db.query(Employee).join(
+        Department, Employee.department_id == Department.department_id
+    ).filter(
+        Department.department_name != "HR",
+        or_(
+            func.lower(Employee.designation).contains("manager"),
+            func.upper(Employee.designation).contains("MANAGER"),
+            Employee.designation.ilike("%manager%")
+        )
+    ).all()
+    
+    manager_list = []
+    for manager in managers:
+        manager_list.append({
+            "employee_id": manager.employee_id,
+            "name": f"{manager.first_name} {manager.last_name}"
+        })
+    
+    return {
+        "total_managers": len(manager_list),
+        "managers": manager_list
+    }
+
+
+
+@router.get("/employee-ids")
+def get_all_employee_ids(db: Session = Depends(get_db)):
+    """Get all employee IDs"""
+    employees = db.query(Employee.employee_id).all()
+    
+    return {
+        "total_employees": len(employees),
+        "employee_ids": [emp.employee_id for emp in employees]
+    }
+
+@router.get("/onboarding-departments")
+def get_onboarding_departments(db: Session = Depends(get_db)):
+    """Get all departments for onboarding"""
+    from src.models.Employee_models import Department
+    
+    departments = db.query(Department.department_name).all()
+    
+    return {
+        "total_departments": len(departments),
+        "departments": [dept.department_name for dept in departments]
     }
 
 @router.get("/test-db")
@@ -262,6 +323,7 @@ async def create_complete_employee(
     start_date: List[str] = Form([]),
     end_date: List[str] = Form([]),
     description: List[str] = Form([]),
+
     
     # Education Fields (Arrays, can be empty)
     course_name: List[str] = Form([]),
@@ -276,7 +338,7 @@ async def create_complete_employee(
     # Document Fields (Arrays with file upload, can be empty)
     document_name: List[str] = Form([]),
     category: List[str] = Form([]),
-    files: Optional[List[UploadFile]] = File(None, description="Upload files: images (JPG, PNG), documents (PDF, DOC)"),
+
     
     # Asset Fields (Single entry only) - Make completely optional
     asset_type: Optional[str] = Form(None),
@@ -302,12 +364,19 @@ async def create_complete_employee(
                 if (i < len(experience_designation) and 
                     company_name[i] and company_name[i].strip() and 
                     experience_designation[i] and experience_designation[i].strip()):
+                    
+                    # Experience proof files disabled for now
+                    proof_file_data = None
+                    proof_file_name = None
+                    
                     work_exp_list.append({
                         "company_name": company_name[i].strip(),
                         "experience_designation": experience_designation[i].strip(),
                         "start_date": start_date[i].strip() if i < len(start_date) and start_date[i] and start_date[i].strip() else None,
                         "end_date": end_date[i].strip() if i < len(end_date) and end_date[i] and end_date[i].strip() else None,
-                        "description": description[i].strip() if i < len(description) and description[i] and description[i].strip() else None
+                        "description": description[i].strip() if i < len(description) and description[i] and description[i].strip() else None,
+                        "proof_file_data": proof_file_data,
+                        "proof_file_name": proof_file_name
                     })
         
         edu_list = []
@@ -330,7 +399,7 @@ async def create_complete_employee(
         
         # Handle file uploads and create document list
         doc_list = []
-        logger.info(f"Processing documents: document_name={document_name}, files={len(files) if files else 0}")
+        logger.info(f"Processing documents: document_name={document_name}")
         if document_name:
             for i in range(len(document_name)):
                 # Check if document name and category exist
@@ -338,31 +407,13 @@ async def create_complete_employee(
                     document_name[i] and document_name[i].strip() and 
                     category[i] and category[i].strip()):
                     
-                    # Check if file exists for this document
-                    if (files and i < len(files) and files[i] and 
-                        hasattr(files[i], 'filename') and files[i].filename and files[i].filename.strip()):
-                        
-                        try:
-                            content = await files[i].read()
-                            logger.info(f"File {i} read successfully, size: {len(content)}")
-                            
-                            doc_list.append({
-                                "document_name": document_name[i].strip(),
-                                "category": category[i].strip(),
-                                "file_name": files[i].filename,
-                                "files": content
-                            })
-                        except Exception as file_error:
-                            logger.error(f"Error processing file {i}: {str(file_error)}")
-                            raise
-                    else:
-                        # Add document entry without file
-                        doc_list.append({
-                            "document_name": document_name[i].strip(),
-                            "category": category[i].strip(),
-                            "file_name": "No file uploaded",
-                            "files": None
-                        })
+                    # Add document entry without file for now
+                    doc_list.append({
+                        "document_name": document_name[i].strip(),
+                        "category": category[i].strip(),
+                        "file_name": "No file uploaded",
+                        "files": None
+                    })
         logger.info(f"Document list created: {len(doc_list)} documents")
         
         asset_list = []
@@ -397,6 +448,19 @@ async def create_complete_employee(
         #         detail=f"Email ID {email_id} already exists"
         #     )
 
+        # Find manager's employee_id if provided
+        manager_employee_id = None
+        if reporting_manager and reporting_manager != "TBD":
+            manager = db.query(Employee).filter(
+                (Employee.first_name + " " + Employee.last_name) == reporting_manager
+            ).first()
+            if manager:
+                manager_employee_id = manager.employee_id
+                logger.info(f"Found manager '{reporting_manager}' with ID: {manager_employee_id}")
+            else:
+                logger.warning(f"Manager '{reporting_manager}' not found, setting to TBD")
+                reporting_manager = "TBD"
+        
         # Find or create department
         from src.models.Employee_models import ShiftMaster, Department
         department = db.query(Department).filter(Department.department_name == department_name).first()
@@ -454,7 +518,7 @@ async def create_complete_employee(
             department_id=department.department_id,
             designation=designation,
             joining_date=datetime.strptime(joining_date, "%Y-%m-%d").date(),
-            reporting_manager=reporting_manager or "TBD",
+            reporting_manager=manager_employee_id or "TBD",
             email_id=email_id,  # Store official company email in Employee table
             phone_number=employee_phone,
             location=location or "Office",
@@ -504,7 +568,7 @@ async def create_complete_employee(
         db.add(bank_details)
 
         # 4. Create Work Experience records (arrays - only if provided)
-        for exp in work_exp_list:
+        for i, exp in enumerate(work_exp_list):
             work_exp = EmployeeWorkExperience(
                 employee_id=employee_id,
                 experience_designation=exp.get("experience_designation"),
@@ -514,6 +578,9 @@ async def create_complete_employee(
                 responsibilities=exp.get("description")
             )
             db.add(work_exp)
+            db.flush()  # Get the experience_id
+            
+            # Experience proof documents disabled for now
 
         # 5. Create Education Qualifications
         for edu in edu_list:
