@@ -1,0 +1,73 @@
+# Azure DevOps Pipeline for HRMS Deployment
+trigger:
+- main
+
+variables:
+  dockerRegistryServiceConnection: 'your-acr-connection'
+  imageRepository: 'hrms-app'
+  containerRegistry: 'yourregistry.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  kubernetesServiceConnection: 'your-k8s-connection'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+    - task: Docker@2
+      displayName: Build and push image
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          latest
+
+- stage: Deploy
+  displayName: Deploy stage
+  dependsOn: Build
+  jobs:
+  - deployment: Deploy
+    displayName: Deploy
+    pool:
+      vmImage: 'ubuntu-latest'
+    environment: 'production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: KubernetesManifest@0
+            displayName: Create/update secrets
+            inputs:
+              action: deploy
+              kubernetesServiceConnection: $(kubernetesServiceConnection)
+              manifests: |
+                $(Pipeline.Workspace)/drop/k8s/secrets.yaml
+              containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
+              secretName: hrms-secrets
+              secretType: generic
+              secretArguments: |
+                --from-literal=database-url="$(DATABASE_URL)"
+                --from-literal=secret-key="$(SECRET_KEY)"
+                --from-literal=smtp-username="$(SMTP_USERNAME)"
+                --from-literal=smtp-password="$(SMTP_PASSWORD)"
+                --from-literal=from-email="$(FROM_EMAIL)"
+          
+          - task: KubernetesManifest@0
+            displayName: Deploy to Kubernetes cluster
+            inputs:
+              action: deploy
+              kubernetesServiceConnection: $(kubernetesServiceConnection)
+              manifests: |
+                $(Pipeline.Workspace)/drop/k8s/deployment.yaml
+                $(Pipeline.Workspace)/drop/k8s/service.yaml
+              containers: |
+                $(containerRegistry)/$(imageRepository):$(tag)
