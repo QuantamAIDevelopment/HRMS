@@ -1,41 +1,70 @@
 FROM python:3.11-slim
 
+# -----------------------------
+# System settings
+# -----------------------------
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
+# -----------------------------
 # Install system dependencies
+# -----------------------------
 RUN apt-get update && apt-get install -y \
     gcc \
+    curl \
     postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements and install Python dependencies
+# -----------------------------
+# Install Python dependencies
+# -----------------------------
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# -----------------------------
 # Copy application code
+# -----------------------------
 COPY src/ ./src/
 COPY alembic.ini .
 
-# Create logs directory and set permissions
-RUN mkdir -p logs && chmod 755 logs
+# -----------------------------
+# Logs directory (matches volumeMount)
+# -----------------------------
+RUN mkdir -p /app/logs && chmod 755 /app/logs
 
-# Create non-root user
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
+# -----------------------------
+# Create non-root user (AKS best practice)
+# -----------------------------
+RUN useradd -m -u 1000 appuser \
+    && chown -R appuser:appuser /app
 USER appuser
 
-# Environment variables (will be overridden by Kubernetes)
-ENV DATABASE_URL="postgresql://postgres:password@localhost:5432/hrms_db"
-ENV SECRET_KEY="change-me-in-production"
-ENV DEBUG="False"
-ENV HOST="0.0.0.0"
-ENV PORT="8000"
+# -----------------------------
+# Runtime configuration
+# (values come ONLY from K8s)
+# -----------------------------
+ENV HOST=0.0.0.0
+ENV PORT=8000
 
-# Expose port
+# ❌ NO secrets here
+# ❌ NO DATABASE_URL
+# ❌ NO SECRET_KEY
+# ❌ NO DEBUG defaults
+
+# -----------------------------
+# Expose application port
+# -----------------------------
 EXPOSE 8000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+# -----------------------------
+# Health check (matches K8s probes)
+# -----------------------------
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:8000/health || exit 1
 
-# Run the application
+# -----------------------------
+# Run application
+# -----------------------------
 CMD ["uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"]
