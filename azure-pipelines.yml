@@ -1,5 +1,5 @@
 trigger:
-- none   # enable when ready
+- none   # enable when ready (or set branch trigger)
 
 pool:
   vmImage: ubuntu-latest
@@ -10,86 +10,47 @@ variables:
   imageName: "HRMS-Service"
   buildTag: "$(Build.BuildId)"
 
-stages:
+steps:
 
-# =========================
-# STAGE 1 — BUILD
-# =========================
-- stage: Build
-  displayName: Build & Push Image
-  jobs:
-  - job: BuildJob
-    displayName: Docker Build
-    steps:
+# 1. Checkout
+- checkout: self
+  clean: true
 
-    - checkout: self
-      clean: true
+# 2. Azure Login + ACR Login
+- task: AzureCLI@2
+  displayName: Azure Login + ACR Login
+  inputs:
+    azureSubscription: "agent-route-final-sc"
+    scriptType: bash
+    scriptLocation: inlineScript
+    inlineScript: |
+      az acr login --name $(acrName)
 
-    - task: AzureCLI@2
-      displayName: Azure Login + ACR Login
-      inputs:
-        azureSubscription: "agent-route-final-sc"
-        scriptType: bash
-        scriptLocation: inlineScript
-        inlineScript: |
-          az acr login --name $(acrName)
+# 3. Enable Docker Buildx
+- script: |
+    docker buildx create --name multiarch-builder --use || true
+    docker buildx inspect --bootstrap
+  displayName: Enable Docker Buildx
 
-    - script: |
-        docker buildx create --name multiarch-builder --use || true
-        docker buildx inspect --bootstrap
-      displayName: Enable Docker Buildx
+# 4. Build & Push Image (BuildId only)
+- script: |
+    docker buildx build \
+      --platform linux/amd64,linux/arm64 \
+      -t $(acrLoginServer)/$(imageName):$(buildTag) \
+      --push \
+      .
+  displayName: Build & Push Multi-Arch Image
 
-    - script: |
-        docker buildx build \
-          --platform linux/amd64,linux/arm64 \
-          -t $(acrLoginServer)/$(imageName):$(buildTag) \
-          --push \
-          .
-      displayName: Build & Push Multi-Arch Image (BuildId only)
+# 5. Copy Kubernetes Manifests
+- task: CopyFiles@2
+  displayName: Copy Kubernetes Manifests
+  inputs:
+    contents: "manifests/**/*.yaml"
+    targetFolder: "$(Build.ArtifactStagingDirectory)/manifests"
 
-    - task: CopyFiles@2
-      displayName: Copy Kubernetes Manifests
-      inputs:
-        contents: "manifests/**/*.yaml"
-        targetFolder: "$(Build.ArtifactStagingDirectory)/manifests"
-
-    - task: PublishPipelineArtifact@1
-      displayName: Publish Manifests
-      inputs:
-        targetPath: "$(Build.ArtifactStagingDirectory)/manifests"
-        artifact: manifests
-
-# =========================
-# STAGE 2 — DEPLOY
-# =========================
-- stage: Deploy
-  displayName: Deploy to AKS
-  dependsOn: Build
-  jobs:
-  - deployment: DeployHRMS
-    displayName: AKS Deployment
-    environment: hrms-prod
-    strategy:
-      runOnce:
-        deploy:
-          steps:
-
-          - task: DownloadPipelineArtifact@2
-            displayName: Download Manifests
-            inputs:
-              artifact: manifests
-              path: $(Pipeline.Workspace)/manifests
-
-          - task: KubernetesManifest@1
-            displayName: Deploy to AKS
-            inputs:
-              action: deploy
-              connectionType: azureResourceManager
-              azureSubscriptionConnection: "agent-route-final-sc"
-              azureResourceGroup: "rg-allvy-core-infra"
-              kubernetesCluster: "allvy-apps-aks"
-              namespace: default
-              manifests: |
-                $(Pipeline.Workspace)/manifests/*.yaml
-              containers: |
-                $(acrLoginServer)/$(imageName):$(buildTag)
+# 6. Publish Manifests Artifact
+- task: PublishPipelineArtifact@1
+  displayName: Publish Manifests
+  inputs:
+    targetPath: "$(Build.ArtifactStagingDirectory)/manifests"
+    artifact: manifests
