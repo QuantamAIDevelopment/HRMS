@@ -17,11 +17,13 @@ spec:
     spec:
       containers:
       - name: hrms-app
-        image: your-registry/hrms-app:latest
+        image: allvysharedacr.azurecr.io/HRMS-Service:$(Build.BuildId)
         imagePullPolicy: Always
+
         ports:
         - containerPort: 8000
           name: http
+
         env:
         - name: DATABASE_URL
           valueFrom:
@@ -48,9 +50,11 @@ spec:
             secretKeyRef:
               name: hrms-secrets
               key: from-email
+
         envFrom:
         - configMapRef:
             name: hrms-config
+
         resources:
           requests:
             memory: "256Mi"
@@ -58,6 +62,7 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
+
         livenessProbe:
           httpGet:
             path: /health
@@ -66,6 +71,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
+
         readinessProbe:
           httpGet:
             path: /health
@@ -74,10 +80,13 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
+
         volumeMounts:
         - name: logs
           mountPath: /app/logs
+
       volumes:
       - name: logs
         emptyDir: {}
+
       restartPolicy: Always
