@@ -68,13 +68,17 @@ If not using Azure DevOps:
 
 ```bash
 # Build and push image
-docker build -t yourregistry.azurecr.io/hrms-app:latest .
-docker push yourregistry.azurecr.io/hrms-app:latest
+docker build -t yourregistry.azurecr.io/hrms-service:latest .
+docker push yourregistry.azurecr.io/hrms-service:latest
 
 # Create secrets manually
 kubectl create secret generic hrms-secrets \
   --from-literal=database-url="your-db-url" \
+  --from-literal=db-username="your-db-username" \
+  --from-literal=db-password="your-db-password" \
   --from-literal=secret-key="your-secret-key" \
+  --from-literal=smtp-server="smtp.gmail.com" \
+  --from-literal=smtp-port="587" \
   --from-literal=smtp-username="your-smtp-user" \
   --from-literal=smtp-password="your-smtp-pass" \
   --from-literal=from-email="your-email"
@@ -93,7 +97,7 @@ kubectl get pods
 kubectl get services
 
 # View logs
-kubectl logs -f deployment/hrms-app
+kubectl logs -f deployment/hrms-service
 
 # Check health
 kubectl port-forward service/hrms-service 8080:80
@@ -103,8 +107,8 @@ curl http://localhost:8080/health
 ## Scaling
 ```bash
 # Scale replicas
-kubectl scale deployment hrms-app --replicas=3
+kubectl scale deployment hrms-service --replicas=3
 
 # Auto-scaling (optional)
-kubectl autoscale deployment hrms-app --cpu-percent=70 --min=2 --max=10
+kubectl autoscale deployment hrms-service --cpu-percent=70 --min=2 --max=10
 ```

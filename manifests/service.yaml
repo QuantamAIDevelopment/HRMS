@@ -4,11 +4,11 @@ metadata:
   name: hrms-service
   namespace: default
   labels:
-    app: hrms-app
+    app: hrms-service
 spec:
   type: LoadBalancer
   selector:
-    app: hrms-app
+    app: hrms-service
   ports:
     - name: http
       port: 80
