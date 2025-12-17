@@ -1,0 +1,53 @@
+trigger:
+- none   # manual or pipeline resource trigger
+
+resources:
+  pipelines:
+  - pipeline: hrmsBuild
+    source: HRMS-Build-Pipeline   # 👈 name of build pipeline
+    trigger: none                 # set to true if you want auto deploy
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  acrName: "allvysharedacr"
+  acrLoginServer: "$(acrName).azurecr.io"
+  imageName: "HRMS-Service"
+  buildTag: "$(resources.pipeline.hrmsBuild.runID)"
+
+stages:
+- stage: Deploy
+  displayName: Deploy to AKS
+  jobs:
+  - deployment: DeployHRMS
+    displayName: AKS Deployment
+    environment: hrms-prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          # 1. Download manifests from build pipeline
+          - task: DownloadPipelineArtifact@2
+            displayName: Download Manifests
+            inputs:
+              source: pipeline
+              pipeline: hrmsBuild
+              artifact: manifests
+              path: $(Pipeline.Workspace)/manifests
+
+          # 2. Deploy to AKS
+          - task: KubernetesManifest@1
+            displayName: Deploy to AKS
+            inputs:
+              action: deploy
+              connectionType: azureResourceManager
+              azureSubscriptionConnection: "agent-route-final-sc"
+              azureResourceGroup: "rg-allvy-core-infra"
+              kubernetesCluster: "allvy-apps-aks"
+              namespace: default
+              manifests: |
+                $(Pipeline.Workspace)/manifests/*.yaml
+              containers: |
+                $(acrLoginServer)/$(imageName):$(buildTag)
