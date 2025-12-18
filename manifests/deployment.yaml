@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: hrms-service
-        image: allvysharedacr.azurecr.io/hrms-service:$(Build.BuildId)
+        image: allvysharedacr.azurecr.io/hrms-service:placeholder
         imagePullPolicy: Always
 
         ports:
