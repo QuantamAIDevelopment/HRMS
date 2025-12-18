@@ -34,8 +34,9 @@ stages:
           - task: DownloadPipelineArtifact@2
             displayName: Download Manifests from Build
             inputs:
-              source: pipeline
-              pipeline: hrmsBuild
+              source: specific
+              project: swm-route-final          # Azure DevOps project name
+              pipeline: hrms-build-service    # EXACT build pipeline name
               artifact: manifests
               path: $(Pipeline.Workspace)/manifests
 
