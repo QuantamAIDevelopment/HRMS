@@ -38,7 +38,7 @@ stages:
               project: swm-route-final          # Azure DevOps project name
               pipeline: hrms-build-service    # EXACT build pipeline name
               artifact: manifests
-              path: $(Pipeline.Workspace)/manifests
+              path: $(System.DefaultWorkingDirectory)
 
           # -----------------------------
           # 2. Deploy to AKS
@@ -53,6 +53,8 @@ stages:
               kubernetesCluster: "allvy-apps-aks"
               namespace: default
               manifests: |
-                $(Pipeline.Workspace)/manifests/**/*.yaml
+                $(System.DefaultWorkingDirectory)/manifests/service.yaml
+                $(System.DefaultWorkingDirectory)/manifests/deployment.yaml
+                $(System.DefaultWorkingDirectory)/manifests/secrets.yaml
               containers: |
                 $(acrLoginServer)/$(imageName):$(buildTag)
