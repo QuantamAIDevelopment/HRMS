@@ -7,7 +7,7 @@ pool:
 variables:
   acrName: "allvysharedacr"
   acrLoginServer: "$(acrName).azurecr.io"
-  imageName: "HRMS-Service"
+  imageName: "hrms-service"
   buildTag: "$(Build.BuildId)"
 
 steps:
