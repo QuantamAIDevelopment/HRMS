@@ -1,11 +1,11 @@
 trigger:
-- none   # manual or pipeline resource trigger
+- none   # manual trigger (recommended for prod)
 
 resources:
   pipelines:
-  - pipeline: hrmsBuild
-    source: QuantamAIDevelopment.HRMS   # 👈 name of build pipeline
-    trigger: none                 # set to true if you want auto deploy
+  - pipeline: hrmsrelease            # local alias (you choose this name)
+    source: hrms-build-service   # 👈 EXACT name of your BUILD pipeline
+    trigger: none                  # set to true if you want auto-deploy
 
 pool:
   vmImage: ubuntu-latest
@@ -13,7 +13,7 @@ pool:
 variables:
   acrName: "allvysharedacr"
   acrLoginServer: "$(acrName).azurecr.io"
-  imageName: "HRMS-Service"
+  imageName: "hrms-service"
   buildTag: "$(resources.pipeline.hrmsBuild.runID)"
 
 stages:
@@ -28,16 +28,20 @@ stages:
         deploy:
           steps:
 
-          # 1. Download manifests from build pipeline
+          # -----------------------------
+          # 1. Download manifests artifact
+          # -----------------------------
           - task: DownloadPipelineArtifact@2
-            displayName: Download Manifests
+            displayName: Download Manifests from Build
             inputs:
               source: pipeline
               pipeline: hrmsBuild
               artifact: manifests
               path: $(Pipeline.Workspace)/manifests
 
+          # -----------------------------
           # 2. Deploy to AKS
+          # -----------------------------
           - task: KubernetesManifest@1
             displayName: Deploy to AKS
             inputs:
