@@ -45,12 +45,12 @@ steps:
 - task: CopyFiles@2
   displayName: Copy Kubernetes Manifests
   inputs:
-    contents: "manifests/**/*.yaml"
-    targetFolder: "$(Build.ArtifactStagingDirectory)/manifests"
+    contents: "manifests/*.yaml"
+    targetFolder: "$(Build.ArtifactStagingDirectory)"
 
 # 6. Publish Manifests Artifact
 - task: PublishPipelineArtifact@1
   displayName: Publish Manifests
   inputs:
-    targetPath: "$(Build.ArtifactStagingDirectory)/manifests"
+    targetPath: "$(Build.ArtifactStagingDirectory)"
     artifact: manifests
