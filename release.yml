@@ -1,0 +1,60 @@
+trigger:
+- none   # manual trigger (recommended for prod)
+
+resources:
+  pipelines:
+  - pipeline: hrmsrelease            # local alias (you choose this name)
+    source: hrms-build-service   # 👈 EXACT name of your BUILD pipeline
+    trigger: none                  # set to true if you want auto-deploy
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  acrName: "allvysharedacr"
+  acrLoginServer: "$(acrName).azurecr.io"
+  imageName: "hrms-service"
+  buildTag: "$(resources.pipeline.hrmsBuild.runID)"
+
+stages:
+- stage: Deploy
+  displayName: Deploy to AKS
+  jobs:
+  - deployment: DeployHRMS
+    displayName: AKS Deployment
+    environment: hrms-prod
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+
+          # -----------------------------
+          # 1. Download manifests artifact
+          # -----------------------------
+          - task: DownloadPipelineArtifact@2
+            displayName: Download Manifests from Build
+            inputs:
+              source: specific
+              project: swm-route-final          # Azure DevOps project name
+              pipeline: hrms-build-service    # EXACT build pipeline name
+              artifact: manifests
+              path: $(System.DefaultWorkingDirectory)
+
+          # -----------------------------
+          # 2. Deploy to AKS
+          # -----------------------------
+          - task: KubernetesManifest@1
+            displayName: Deploy to AKS
+            inputs:
+              action: deploy
+              connectionType: azureResourceManager
+              azureSubscriptionConnection: "agent-route-final-sc"
+              azureResourceGroup: "rg-allvy-core-infra"
+              kubernetesCluster: "allvy-apps-aks"
+              namespace: default
+              manifests: |
+                $(System.DefaultWorkingDirectory)/service.yaml
+                $(System.DefaultWorkingDirectory)/deployment.yaml
+                $(System.DefaultWorkingDirectory)/secrets.yaml
+              containers: |
+                $(acrLoginServer)/$(imageName):$(buildTag)
