@@ -33,7 +33,7 @@ stages:
             displayName: Download Manifests
             inputs:
               source: specific
-              project: SWM_ROUTE_FINAL
+              project: SWM-ROUTE-FINAL
               pipeline: hrms-build-service
               artifact: manifests
               path: $(Pipeline.Workspace)/manifests
