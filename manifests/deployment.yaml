@@ -71,10 +71,6 @@ spec:
               name: hrms-config
               key: CORS_ORIGINS
 
-        envFrom:
-        - configMapRef:
-            name: hrms-config
-
         resources:
           requests:
             memory: "256Mi"
