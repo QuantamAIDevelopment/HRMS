@@ -1,60 +1,61 @@
 trigger:
-- none   # manual trigger (recommended for prod)
-
-resources:
-  pipelines:
-  - pipeline: hrmsrelease            # local alias (you choose this name)
-    source: hrms-build-service   # 👈 EXACT name of your BUILD pipeline
-    trigger: none                  # set to true if you want auto-deploy
+- none
 
 pool:
   vmImage: ubuntu-latest
 
 variables:
-  acrName: "allvysharedacr"
-  acrLoginServer: "$(acrName).azurecr.io"
-  imageName: "hrms-service"
+  acrLoginServer: allvysharedacr.azurecr.io
+  imageName: hrms-service
   buildTag: "$(resources.pipeline.hrmsBuild.runID)"
+
+resources:
+  pipelines:
+  - pipeline: hrmsrelease
+    source: hrms-build-service   # MUST be exact
+    trigger: none
 
 stages:
 - stage: Deploy
-  displayName: Deploy to AKS
   jobs:
   - deployment: DeployHRMS
-    displayName: AKS Deployment
     environment: hrms-prod
     strategy:
       runOnce:
         deploy:
           steps:
 
-          # -----------------------------
-          # 1. Download manifests artifact
-          # -----------------------------
+          # ❌ DO NOT checkout repo
+          # - checkout: self   <-- MUST NOT EXIST
+
+          # 1️⃣ Download manifests (MANDATORY)
           - task: DownloadPipelineArtifact@2
-            displayName: Download Manifests from Build
+            displayName: Download Manifests
             inputs:
               source: specific
-              project: swm-route-final          # Azure DevOps project name
-              pipeline: hrms-build-service    # EXACT build pipeline name
+              project: SWM_ROUTE_FINAL
+              pipeline: hrms-build-service
               artifact: manifests
               path: $(Pipeline.Workspace)/manifests
 
-          # -----------------------------
-          # 2. Deploy to AKS
-          # -----------------------------
+          # 2️⃣ HARD VERIFY FILES EXIST
+          - script: |
+              echo "=== LISTING MANIFESTS ==="
+              ls -l $(Pipeline.Workspace)/manifests
+            displayName: Verify manifests exist
+
+          # 3️⃣ Deploy
           - task: KubernetesManifest@1
             displayName: Deploy to AKS
             inputs:
               action: deploy
               connectionType: azureResourceManager
-              azureSubscriptionConnection: "agent-route-final-sc"
-              azureResourceGroup: "rg-allvy-core-infra"
-              kubernetesCluster: "allvy-apps-aks"
+              azureSubscriptionConnection: agent-route-final-sc
+              azureResourceGroup: rg-allvy-core-infra
+              kubernetesCluster: allvy-apps-aks
               namespace: default
               manifests: |
-                $(Pipeline.Workspace)/manifests/service.yaml
-                $(Pipeline.Workspace)/manifests/deployment.yaml
-                $(Pipeline.Workspace)/manifests/secrets.yaml
+                $(Pipeline.Workspace)/manifests/*.yaml
               containers: |
                 $(acrLoginServer)/$(imageName):$(buildTag)
+              rolloutStatusTimeout: 300
