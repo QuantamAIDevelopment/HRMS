@@ -1,5 +1,5 @@
 trigger:
-- none   # enable when ready (or set branch trigger)
+- none   # enable when ready
 
 pool:
   vmImage: ubuntu-latest
@@ -41,19 +41,16 @@ steps:
       .
   displayName: Build & Push Multi-Arch Image
 
-# 5. Copy Kubernetes Manifests
+# 5. Copy Kubernetes Manifests (FIXED)
 - task: CopyFiles@2
   displayName: Copy Kubernetes Manifests
   inputs:
-    sourceFolder: "$(Build.SourcesDirectory)"
-    sourceFolder: "$(Build.SourcesDirectory)"
     contents: "manifests/*.yaml"
-    targetFolder: "$(Build.ArtifactStagingDirectory)"
-    flattenFolders: true
+    targetFolder: "$(Build.ArtifactStagingDirectory)/manifests"
 
-# 6. Publish Manifests Artifact
+# 6. Publish Manifests Artifact (FIXED)
 - task: PublishPipelineArtifact@1
   displayName: Publish Manifests
   inputs:
-    targetPath: "$(Build.ArtifactStagingDirectory)"
+    targetPath: "$(Build.ArtifactStagingDirectory)/manifests"
     artifact: manifests
