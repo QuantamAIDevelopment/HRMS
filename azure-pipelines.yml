@@ -8,15 +8,14 @@ variables:
   acrName: "allvysharedacr"
   acrLoginServer: "$(acrName).azurecr.io"
   imageName: "hrms-service"
-  buildTag: "$(Build.BuildId)"
 
 steps:
 
-# 1. Checkout
+# 1️⃣ Checkout source
 - checkout: self
   clean: true
 
-# 2. Azure Login + ACR Login
+# 2️⃣ Azure Login + ACR Login
 - task: AzureCLI@2
   displayName: Azure Login + ACR Login
   inputs:
@@ -26,29 +25,30 @@ steps:
     inlineScript: |
       az acr login --name $(acrName)
 
-# 3. Enable Docker Buildx
+# 3️⃣ Enable Docker Buildx (Multi-Arch)
 - script: |
     docker buildx create --name multiarch-builder --use || true
     docker buildx inspect --bootstrap
   displayName: Enable Docker Buildx
 
-# 4. Build & Push Image (BuildId only)
+# 4️⃣ Build & Push Docker Image (Multi-Arch + BuildId + latest)
 - script: |
     docker buildx build \
       --platform linux/amd64,linux/arm64 \
-      -t $(acrLoginServer)/$(imageName):$(buildTag) \
+      -t $(acrLoginServer)/$(imageName):$(Build.BuildId) \
+      -t $(acrLoginServer)/$(imageName):latest \
       --push \
       .
   displayName: Build & Push Multi-Arch Image
 
-# 5. Copy Kubernetes Manifests (FIXED)
+# 5️⃣ Copy Kubernetes Manifests
 - task: CopyFiles@2
   displayName: Copy Kubernetes Manifests
   inputs:
     contents: "manifests/*.yaml"
     targetFolder: "$(Build.ArtifactStagingDirectory)/manifests"
 
-# 6. Publish Manifests Artifact (FIXED)
+# 6️⃣ Publish Manifests Artifact
 - task: PublishPipelineArtifact@1
   displayName: Publish Manifests
   inputs:
