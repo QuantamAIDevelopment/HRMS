@@ -41,7 +41,9 @@ stages:
           # 2️⃣ HARD VERIFY FILES EXIST
           - script: |
               echo "=== LISTING MANIFESTS ==="
-              ls -l $(Pipeline.Workspace)/manifests
+              ls -la $(Pipeline.Workspace)/manifests/
+              echo "=== FILES CONTENT ==="
+              find $(Pipeline.Workspace)/manifests/ -name "*.yaml" -type f
             displayName: Verify manifests exist
 
           # 3️⃣ Deploy
