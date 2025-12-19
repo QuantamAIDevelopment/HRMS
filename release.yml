@@ -53,8 +53,8 @@ stages:
               kubernetesCluster: "allvy-apps-aks"
               namespace: default
               manifests: |
-                $(Pipeline.Workspace)/service.yaml
-                $(Pipeline.Workspace)/deployment.yaml
-                $(Pipeline.Workspace)/secrets.yaml
+                $(Pipeline.Workspace)/manifests/service.yaml
+                $(Pipeline.Workspace)/manifests/deployment.yaml
+                $(Pipeline.Workspace)/manifests/secrets.yaml
               containers: |
                 $(acrLoginServer)/$(imageName):$(buildTag)
