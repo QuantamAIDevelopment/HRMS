@@ -38,7 +38,7 @@ stages:
               project: swm-route-final          # Azure DevOps project name
               pipeline: hrms-build-service    # EXACT build pipeline name
               artifact: manifests
-              path: $(Pipeline.Workspace)
+              path: $(Pipeline.Workspace)/manifests
 
           # -----------------------------
           # 2. Deploy to AKS
