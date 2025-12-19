@@ -57,7 +57,7 @@ stages:
               kubernetesCluster: allvy-apps-aks
               namespace: default
               manifests: |
-                $(Pipeline.Workspace)/manifests/*.yaml
+                $(Pipeline.Workspace)/manifests/manifests/*.yaml
               containers: |
                 $(acrLoginServer)/$(imageName):$(buildTag)
               rolloutStatusTimeout: 300
