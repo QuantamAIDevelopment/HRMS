@@ -5,8 +5,9 @@ services:
     image: postgres:15
     environment:
       POSTGRES_DB: hrms_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: psycho539
+      # ⚠️ LOCAL DEV ONLY: Use strong passwords in production
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpassword}
     ports:
       - "5432:5432"
     volumes:
@@ -22,9 +23,15 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:psycho539@postgres:5432/hrms_db
-      - SECRET_KEY=your-secret-key-here
-      - DEBUG=True
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:devpassword@postgres:5432/hrms_db}
+      - SECRET_KEY=${SECRET_KEY:-dev-secret-key-change-in-production}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+      - DEBUG=${DEBUG:-false}
+      - SMTP_SERVER=${SMTP_SERVER:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - FROM_EMAIL=${FROM_EMAIL:-}
     depends_on:
       postgres:
         condition: service_healthy

@@ -2,8 +2,8 @@ from pydantic_settings import BaseSettings
 from typing import Optional
 
 class Settings(BaseSettings):
-    database_url: str
-    secret_key: str = "your-secret-key-here"
+    database_url: str  # Required - must be provided via env var
+    secret_key: str  # Required - must be provided via env var
     
     @property
     def sync_database_url(self) -> str:
@@ -14,15 +14,15 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     reset_token_expire_minutes: int = 15
     debug: bool = False
-    host: str = "127.0.0.1"
-    port: int = 9000
+    host: str = "0.0.0.0"  # AKS: bind to all interfaces
+    port: int = 8000  # AKS: standard port
     smtp_server: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
     smtp_password: str = ""
     from_email: str = ""
-    dev_mode: bool = True
-    frontend_url: str = "http://localhost:3000"
+    dev_mode: bool = False  # Should be False in production
+    frontend_url: str = "http://localhost:3000"  # Default for local dev; override in production
     
     class Config:
         env_file = ".env"

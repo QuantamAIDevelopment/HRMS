@@ -1,5 +1,8 @@
-DATABASE_URL = "postgresql://postgres:Bhavitha1$@localhost/HRMS--BACKEND"
-SECRET_KEY = "4f0c1e8b72df4b95c931257e18fdc9f2d99536cd0ea49fb93eb0a2e0b"
+# ⚠️ DO NOT store sensitive values in constants
+# All configuration must come from environment variables
+# See src/config/settings.py for configuration management
+
+# Non-sensitive configuration defaults
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 1440
 REFRESH_TOKEN_EXPIRE_DAYS = 7

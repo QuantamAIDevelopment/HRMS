@@ -14,8 +14,8 @@ from datetime import timedelta
  
 router = APIRouter()
  
-# In-memory storage for test user password
-test_user_password = "Bhavithak1$"
+# ⚠️ REMOVED: Test user password should not be hardcoded
+# Use proper user management and password reset flows instead
  
 # In-memory storage for forgot password sessions
 forgot_password_sessions = {}

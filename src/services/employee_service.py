@@ -133,7 +133,9 @@ class EmployeeService:
             
         except Exception as e:
             db.rollback()
-            print(f"Error updating employee {employee_id}: {e}")
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error updating employee {employee_id}: {e}")
             return None
     
     @staticmethod

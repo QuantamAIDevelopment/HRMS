@@ -70,6 +70,16 @@ spec:
             secretKeyRef:
               name: hrms-secrets
               key: from-email
+        - name: FRONTEND_URL
+          valueFrom:
+            configMapKeyRef:
+              name: hrms-config
+              key: FRONTEND_URL
+        - name: CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: hrms-config
+              key: CORS_ORIGINS
 
         envFrom:
         - configMapRef:

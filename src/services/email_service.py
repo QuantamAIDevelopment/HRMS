@@ -21,7 +21,6 @@ class EmailService:
         try:
             if not all([self.smtp_server, self.smtp_port, self.smtp_username, self.smtp_password]):
                 logger.error(f"Email service not configured. Missing SMTP settings. Cannot send email to {to_email}")
-                print(f"EMAIL ERROR: SMTP not configured - server:{self.smtp_server}, port:{self.smtp_port}, user:{self.smtp_username}, pass:{'***' if self.smtp_password else 'None'}")
                 return False
             
             msg = MIMEMultipart("alternative")
@@ -43,7 +42,6 @@ class EmailService:
                 server.send_message(msg)
             
             logger.info(f"Email sent successfully to {to_email}")
-            print(f"EMAIL SUCCESS: Sent to {to_email}")
             return True
         
         except Exception as e:

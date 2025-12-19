@@ -6,6 +6,9 @@ from schemas.salary import SalaryCreate, PayrollSetupUpdate, SalaryComponentUpda
 from typing import Optional
 from decimal import Decimal
 from fastapi import HTTPException
+import logging
+
+logger = logging.getLogger(__name__)
 
 class SalaryService:
     # Fixed values that cannot be changed
@@ -274,15 +277,12 @@ class SalaryService:
     
     @staticmethod
     def get_employee_payslip(db: Session, employee_id: str, month: str = None):
-        print(f"=== PAYSLIP DEBUG START ===")
-        print(f"Employee ID: {employee_id}")
-        print(f"Month: {month}")
         try:
-            print(f"DEBUG: Starting payslip retrieval for {employee_id}, month: {month}")
+            logger = logging.getLogger(__name__)
+            logger.info(f"Retrieving payslip for employee {employee_id}, month: {month}")
             
             # Get employee information
             employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
-            print(f"DEBUG: Employee found: {employee is not None}")
             if not employee:
                 raise HTTPException(status_code=404, detail="Employee not found")
             
@@ -292,20 +292,16 @@ class SalaryService:
                 query = query.filter(PayrollSetup.month == month)
             
             payroll_record = query.first()
-            print(f"DEBUG: Payroll record found: {payroll_record is not None}")
             if not payroll_record:
                 raise HTTPException(status_code=404, detail="Payslip not found for the specified employee/month")
         except HTTPException:
             raise
         except Exception as e:
-            print(f"ERROR in get_employee_payslip query: {str(e)}")
-            print(f"Exception type: {type(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Database error retrieving payslip: {str(e)}")
             raise Exception(f"Database error: {str(e)}")
         
         try:
-            print(f"DEBUG: Creating payslip response")
+            logger.info(f"Creating payslip response for employee {employee_id}")
             
             # Prepare payslip response
             payslip_data = {
@@ -335,19 +331,16 @@ class SalaryService:
                 "generated_at": payroll_record.created_at.isoformat() if hasattr(payroll_record, 'created_at') and payroll_record.created_at else None
             }
             
-            print(f"DEBUG: Payslip data created successfully")
+            logger.info(f"Payslip data created successfully")
             return payslip_data
         except Exception as e:
-            print(f"ERROR creating payslip response: {str(e)}")
-            print(f"Exception type: {type(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error creating payslip response: {str(e)}")
             raise Exception(f"Error creating payslip response: {str(e)}")
     
     @staticmethod
     def _fix_salary_components(db: Session, payroll_record):
         try:
-            print(f"DEBUG: Fixing salary components")
+            logger = logging.getLogger(__name__)
             if hasattr(payroll_record, 'salary_components') and payroll_record.salary_components:
                 if isinstance(payroll_record.salary_components, str):
                     import json
@@ -357,15 +350,13 @@ class SalaryService:
                         db.commit()
                         return fixed_components
                     except Exception as e:
-                        print(f"ERROR parsing salary_components JSON: {str(e)}")
+                        logger.error(f"Error parsing salary_components JSON: {str(e)}")
                         return {"earnings": [], "deductions": []}
                 else:
                     return payroll_record.salary_components
             return {"earnings": [], "deductions": []}
         except Exception as e:
-            print(f"ERROR in _fix_salary_components: {str(e)}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error in _fix_salary_components: {str(e)}")
             return {"earnings": [], "deductions": []}
     
     @staticmethod
@@ -569,9 +560,8 @@ class SalaryService:
         except HTTPException:
             raise
         except Exception as e:
-            import traceback
-            print(f"ERROR in get_salary_summary: {str(e)}")
-            print(f"Traceback: {traceback.format_exc()}")
+            logger = logging.getLogger(__name__)
+            logger.error(f"Error in get_salary_summary: {str(e)}", exc_info=True)
             raise HTTPException(status_code=500, detail=f"Error retrieving salary summary: {str(e)}")
     
     @staticmethod

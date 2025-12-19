@@ -89,17 +89,27 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 # Add CORS middleware
+# In production, CORS origins should come from environment variable
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://localhost:8005",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1:8001",
+]
+
+# Add production origins from environment if available
+import os
+prod_origins = os.getenv("CORS_ORIGINS", "").split(",")
+cors_origins.extend([origin.strip() for origin in prod_origins if origin.strip()])
+
+# Remove duplicates
+cors_origins = list(set(cors_origins))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://localhost:8005",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:8000",
-        "http://127.0.0.1:8001",
-        "*"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],

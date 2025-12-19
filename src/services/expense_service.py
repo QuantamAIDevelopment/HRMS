@@ -2,13 +2,15 @@ from sqlalchemy.orm import Session
 from models.expense import Expense
 from schemas.expense import ExpenseCreate
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ExpenseService:
     @staticmethod
     def create_expense_with_file(db: Session, employee_id: str, category: str, description: str, amount, expense_date, file_path: str):
         try:
-            print(f"DEBUG: Creating expense for employee_id: {employee_id}")
-            print(f"DEBUG: Category: {category}, Amount: {amount}, Date: {expense_date}")
+            logger.info(f"Creating expense for employee_id: {employee_id}, Category: {category}, Amount: {amount}")
             
             db_expense = Expense(
                 employee_id=employee_id,
@@ -23,12 +25,11 @@ class ExpenseService:
             db.commit()
             db.refresh(db_expense)
             
-            print(f"DEBUG: Expense created successfully with ID: {db_expense.expense_id}")
-            print(f"DEBUG: Stored employee_id: {db_expense.employee_id}")
+            logger.info(f"Expense created successfully with ID: {db_expense.expense_id}")
             
             return db_expense
         except Exception as e:
-            print(f"DEBUG: Error creating expense: {str(e)}")
+            logger.error(f"Error creating expense: {str(e)}")
             db.rollback()
             raise e
     
@@ -42,14 +43,12 @@ class ExpenseService:
     
     @staticmethod
     def get_expenses_by_employee(db: Session, employee_id: str, status: str = None):
-        print(f"DEBUG: Querying expenses for employee_id: {employee_id}, status: {status}")
+        logger.info(f"Querying expenses for employee_id: {employee_id}, status: {status}")
         query = db.query(Expense).filter(Expense.employee_id == employee_id)
         if status:
             query = query.filter(Expense.status.ilike(f"%{status}%"))
         expenses = query.all()
-        print(f"DEBUG: Found {len(expenses)} expenses for employee {employee_id}")
-        for expense in expenses:
-            print(f"DEBUG: Expense ID: {expense.expense_id}, Category: {expense.category}, Status: {expense.status}")
+        logger.info(f"Found {len(expenses)} expenses for employee {employee_id}")
         return expenses
     
     @staticmethod
