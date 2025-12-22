@@ -46,16 +46,38 @@ stages:
               find $(Pipeline.Workspace)/manifests/ -name "*.yaml" -type f
             displayName: Verify manifests exist
 
-          # 3️⃣ Deploy
+          # 3️⃣ MANUAL VARIABLE SUBSTITUTION
+          - task: PowerShell@2
+            displayName: Replace Variables in Secrets
+            inputs:
+              targetType: 'inline'
+              script: |
+                $secretsFile = "$(Pipeline.Workspace)/manifests/secrets.yaml"
+                $content = Get-Content $secretsFile -Raw
+                $content = $content -replace '#{DATABASE_URL}#', '$(DATABASE_URL)'
+                $content = $content -replace '#{SECRET_KEY}#', '$(SECRET_KEY)'
+                $content = $content -replace '#{SMTP_SERVER}#', '$(SMTP_SERVER)'
+                $content = $content -replace '#{SMTP_PORT}#', '$(SMTP_PORT)'
+                $content = $content -replace '#{SMTP_USERNAME}#', '$(SMTP_USERNAME)'
+                $content = $content -replace '#{SMTP_PASSWORD}#', '$(SMTP_PASSWORD)'
+                $content = $content -replace '#{FROM_EMAIL}#', '$(FROM_EMAIL)'
+                $content = $content -replace '#{FRONTEND_URL}#', '$(FRONTEND_URL)'
+                $content = $content -replace '#{CORS_ORIGINS}#', '$(CORS_ORIGINS)'
+                Set-Content $secretsFile $content
+                Write-Host "Variables replaced in secrets.yaml"
+
+          # 4️⃣ Deploy
           - task: KubernetesManifest@1
             displayName: Deploy to AKS
             inputs:
               action: deploy
+              enableRolloutStatus: false
               connectionType: azureResourceManager
               azureSubscriptionConnection: agent-route-final-sc
               azureResourceGroup: rg-allvy-core-infra
               kubernetesCluster: allvy-apps-aks
               namespace: default
               manifests: |
-                $(Pipeline.Workspace)/manifests/manifests/*.yaml
-              rolloutStatusTimeout: 300
+                $(Pipeline.Workspace)/manifests/manifests/service.yaml
+                $(Pipeline.Workspace)/manifests/manifests/deployment.yaml
+                $(Pipeline.Workspace)/manifests/manifests/secrets.yaml
