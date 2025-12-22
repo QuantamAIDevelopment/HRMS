@@ -52,7 +52,7 @@ stages:
             inputs:
               targetType: 'inline'
               script: |
-                $secretsFile = "$(Pipeline.Workspace)/manifests/secrets.yaml"
+                $secretsFile = "$(Pipeline.Workspace)/manifests/manifests/secrets.yaml"
                 $content = Get-Content $secretsFile -Raw
                 $content = $content -replace '#{DATABASE_URL}#', '$(DATABASE_URL)'
                 $content = $content -replace '#{SECRET_KEY}#', '$(SECRET_KEY)'
