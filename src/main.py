@@ -216,6 +216,34 @@ async def startup_event():
     try:
         await init_database()
         logger.info("✅ Database initialized successfully on startup")
+        
+        # Create dummy HR Manager user for testing
+        try:
+            from src.models.user import User
+            from src.core.security import get_password_hash
+            from src.models.session import get_db
+            
+            db = next(get_db())
+            existing_user = db.query(User).filter(User.email == "hrmanager@test.com").first()
+            if not existing_user:
+                hashed_password = get_password_hash("password123")
+                user = User(
+                    employee_id="HRM001",
+                    email="hrmanager@test.com",
+                    hashed_password=hashed_password,
+                    full_name="Test HR Manager",
+                    role="HR Manager",
+                    is_active=True
+                )
+                db.add(user)
+                db.commit()
+                logger.info("✅ Dummy HR Manager user created: hrmanager@test.com")
+            else:
+                logger.info("ℹ️ HR Manager user already exists")
+            db.close()
+        except Exception as e:
+            logger.warning(f"⚠️ Dummy user creation had warnings: {e}")
+            
     except Exception as e:
         logger.warning(f"⚠️ Database initialization had warnings: {e}")
         logger.info("🚀 Application starting anyway - database may already be set up")
