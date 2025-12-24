@@ -4,6 +4,7 @@ from sqlalchemy import text
 from typing import List
 
 from src.models.session import get_db
+from src.core.security import require_hr_roles_only
 from src.models.job_title import JobTitle
 from src.schemas.job_title import JobTitleCreate, JobTitleResponse, JobTitleUpdate
 
@@ -12,7 +13,11 @@ router = APIRouter()
 
 
 @router.post("/", response_model=JobTitleResponse, status_code=status.HTTP_201_CREATED)
-def create_job_title(job_title: JobTitleCreate, db: Session = Depends(get_db)):
+def create_job_title(
+    job_title: JobTitleCreate,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     db_job_title = JobTitle(**job_title.dict())
     db.add(db_job_title)
     db.commit()

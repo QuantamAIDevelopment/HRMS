@@ -58,6 +58,60 @@ def get_current_user_email(credentials: HTTPAuthorizationCredentials = Depends(s
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
     return verify_token(credentials.credentials)
 
+def get_current_user_with_role(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current user with role information from JWT token"""
+    if not credentials or not credentials.credentials:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+    
+    try:
+        payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=[settings.algorithm])
+        email: str = payload.get("email")
+        role: str = payload.get("role")
+        if email is None:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+        return {"email": email, "role": role}
+    except JWTError:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+
+def require_employee_role_only(current_user: dict = Depends(get_current_user_with_role)):
+    """Dependency to ensure user has Employee role only"""
+    user_role = current_user["role"].lower() if current_user["role"] else ""
+    
+    # Check if role is employee (not manager, not HR)
+    is_employee = "employee" in user_role and not any(keyword in user_role for keyword in ["manager", "hr", "executive", "head", "director", "admin"])
+    
+    if not is_employee:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Insufficient permissions. Employee role required. Current role: {current_user['role']}"
+        )
+    return current_user
+
+def require_hr_roles_only(current_user: dict = Depends(get_current_user_with_role)):
+    """Dependency to ensure user has HR Manager or HR Executive role only"""
+    user_role = current_user["role"].lower() if current_user["role"] else ""
+    
+    # Check if role contains HR-related keywords
+    is_hr_manager = "hr" in user_role and any(keyword in user_role for keyword in ["manager", "head", "director"])
+    is_hr_executive = "hr" in user_role and "executive" in user_role
+    
+    if not (is_hr_manager or is_hr_executive):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Insufficient permissions. HR Manager or HR Executive role required. Current role: {current_user['role']}"
+        )
+    return current_user
+
+def require_employee_manager_hr_roles(current_user: dict = Depends(get_current_user_with_role)):
+    """Dependency to ensure user has Employee, Manager, or HR role"""
+    allowed_roles = ["EMPLOYEE", "MANAGER", "HR_EXECUTIVE", "HR_MANAGER", "HR Manager", "HR Executive", "Manager", "Employee"]
+    if current_user["role"] not in allowed_roles:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Insufficient permissions. Employee, Manager, or HR role required."
+        )
+    return current_user
+
 def get_current_user() -> CurrentUser:
     """Stub for current user dependency - to be implemented by auth developer"""
     return CurrentUser(user_id=1, email="hr@company.com", role="HR Manager")

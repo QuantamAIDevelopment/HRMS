@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Form, File, UploadFile, Query
 from sqlalchemy.orm import Session
 from api.deps import get_db
+from src.core.security import get_current_user_email, require_employee_manager_hr_roles, require_hr_roles_only
 from schemas.expense import ExpenseResponse, ExpenseStatusResponse
 from services.expense_service import ExpenseService
 from decimal import Decimal
@@ -45,6 +46,7 @@ def create_expense_request(
     amount: Decimal = Form(...),
     expense_date: date = Form(...),
     receipt_file: UploadFile = File(None),
+    current_user: dict = Depends(require_employee_manager_hr_roles),
     db: Session = Depends(get_db)
 ):
     try:
@@ -106,7 +108,10 @@ def create_expense_request(
         raise HTTPException(status_code=500, detail=f"Error creating expense: {str(e)}")
 
 @router.get("/employee-expenses")
-def get_all_expenses(db: Session = Depends(get_db)):
+def get_all_expenses(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         expenses = ExpenseService.get_all_expenses(db)
         return [{
@@ -127,7 +132,12 @@ def get_all_expenses(db: Session = Depends(get_db)):
 
 
 @router.get("/employee-expenses/employee/{employee_id}")
-def get_employee_expenses(employee_id: str, status: str = Query(None), db: Session = Depends(get_db)):
+def get_employee_expenses(
+    employee_id: str,
+    status: str = Query(None),
+    current_user: dict = Depends(require_employee_manager_hr_roles),
+    db: Session = Depends(get_db)
+):
     try:
         expenses = ExpenseService.get_expenses_by_employee(db, employee_id, status)
         return [{
@@ -150,6 +160,7 @@ def update_expense_status(
     expense_id: str = Form(...),
     employee_id: str = Form(...),
     status: str = Form(...),
+    current_user: dict = Depends(require_hr_roles_only),
     db: Session = Depends(get_db)
 ):
     try:
@@ -177,17 +188,28 @@ def update_expense_status(
 
 
 @router.get("/expenses/status")
-def get_expense_status(db: Session = Depends(get_db)):
+def get_expense_status(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Get overall expense status summary"""
     return ExpenseService.get_expense_status_summary(db)
 
 @router.get("/expenses/status/{employee_id}")
-def get_employee_expense_status(employee_id: str, db: Session = Depends(get_db)):
+def get_employee_expense_status(
+    employee_id: str,
+    current_user: dict = Depends(require_employee_manager_hr_roles),
+    db: Session = Depends(get_db)
+):
     """Get expense status summary for specific employee"""
     return ExpenseService.get_employee_expense_status_summary(db, employee_id)
 
 @router.get("/debug/receipt-url/{expense_id}")
-def debug_receipt_url(expense_id: int, db: Session = Depends(get_db)):
+def debug_receipt_url(
+    expense_id: int,
+    current_user: str = Depends(get_current_user_email),
+    db: Session = Depends(get_db)
+):
     """Debug endpoint to check raw receipt_url value in database"""
     expense = ExpenseService.get_expense_by_id(db, expense_id)
     if not expense:

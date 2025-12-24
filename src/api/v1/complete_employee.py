@@ -3,6 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from core.deps import get_db
+from src.core.security import require_hr_roles_only
 import logging
 
 # Set up logging
@@ -51,7 +52,10 @@ router = APIRouter()
 
 
 @router.get("/all-records")
-def get_all_onboarding_records(db: Session = Depends(get_db)):
+def get_all_onboarding_records(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     from src.models.Employee_models import Department
     
     # Join Employee with Department to get department names
@@ -72,7 +76,10 @@ def get_all_onboarding_records(db: Session = Depends(get_db)):
     }
 
 @router.get("/get-available-assets")
-def get_available_assets(db: Session = Depends(get_db)):
+def get_available_assets(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         available_assets = db.query(Assets).filter(Assets.status == "Available").all()
         return {
@@ -94,7 +101,10 @@ def get_available_assets(db: Session = Depends(get_db)):
         }
 
 @router.get("/statistics")
-def get_onboarding_statistics(db: Session = Depends(get_db)):
+def get_onboarding_statistics(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     total_employees = db.query(Employee).count()
     
     return {
@@ -102,7 +112,10 @@ def get_onboarding_statistics(db: Session = Depends(get_db)):
     }
 
 @router.get("/managers")
-def get_manager_employees(db: Session = Depends(get_db)):
+def get_manager_employees(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Get all employees who are managers (excluding HR managers)"""
     from src.models.Employee_models import Department
     from sqlalchemy import func, or_
@@ -134,7 +147,10 @@ def get_manager_employees(db: Session = Depends(get_db)):
 
 
 @router.get("/employee-ids")
-def get_all_employee_ids(db: Session = Depends(get_db)):
+def get_all_employee_ids(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Get all employee IDs"""
     employees = db.query(Employee.employee_id).all()
     
@@ -144,7 +160,10 @@ def get_all_employee_ids(db: Session = Depends(get_db)):
     }
 
 @router.get("/onboarding-departments")
-def get_onboarding_departments(db: Session = Depends(get_db)):
+def get_onboarding_departments(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Get all departments for onboarding"""
     from src.models.Employee_models import Department
     
@@ -156,7 +175,10 @@ def get_onboarding_departments(db: Session = Depends(get_db)):
     }
 
 @router.get("/test-db")
-def test_database_connection(db: Session = Depends(get_db)):
+def test_database_connection(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Simple test endpoint to check database connectivity"""
     from sqlalchemy import text
     try:
@@ -168,7 +190,11 @@ def test_database_connection(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/complete-employee/{employee_id}")
-def get_complete_employee(employee_id: str, db: Session = Depends(get_db)):
+def get_complete_employee(
+    employee_id: str,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     # Get all employee data
     employee = db.query(Employee).filter(Employee.employee_id == employee_id).first()
     if not employee:
@@ -385,6 +411,7 @@ async def create_complete_employee(
     # User Creation
     email_id: str = Form(...),
     
+    current_user: dict = Depends(require_hr_roles_only),
     db: Session = Depends(get_db)
 ):
     try:
