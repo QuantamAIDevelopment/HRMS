@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from api.deps import get_db
+from src.core.security import require_hr_roles_only
 from schemas.salary import SalaryCreate, SalaryResponse, PayslipResponse, PayrollSetupUpdate, SalaryComponentUpdate, ComponentDelete
 from services.salary_service import SalaryService
 from pydantic import BaseModel, Field
@@ -12,7 +13,12 @@ router = APIRouter()
 
 
 @router.delete("/delete-payslip/{employee_id}/{month}")
-def delete_payslip(employee_id: str, month: str, db: Session = Depends(get_db)):
+def delete_payslip(
+    employee_id: str,
+    month: str,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Delete payslip by employee_id and month"""
     try:
         return SalaryService.delete_payslip(db, employee_id, month)
@@ -33,11 +39,17 @@ def get_salary_summary(employee_id: str, db: Session = Depends(get_db)):
 
 
 @router.get("/salaries")
-def get_all_salaries(db: Session = Depends(get_db)):
+def get_all_salaries(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     return SalaryService.get_all_salaries(db)
 
 @router.get("/all-employee-ids")
-def get_all_employee_ids(db: Session = Depends(get_db)):
+def get_all_employee_ids(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         from models.Employee_models import Employee
         employees = db.query(Employee.employee_id).all()
@@ -50,6 +62,7 @@ def create_salary_structure_by_employee_id(
     employee_id: str, 
     month: str, 
     pay_cycle: str,
+    current_user: dict = Depends(require_hr_roles_only),
     db: Session = Depends(get_db)
 ):
     try:
@@ -79,6 +92,7 @@ class SalaryStructureModel(BaseModel):
 @router.post("/save-salary-structure")
 def save_salary_structure(
     salary_data: SalaryStructureModel,
+    current_user: dict = Depends(require_hr_roles_only),
     db: Session = Depends(get_db)
 ):
     try:
@@ -100,6 +114,7 @@ def get_employee_payslip(employee_id: str, month: str = Query(None), db: Session
 @router.put("/update-salary-components")
 def update_salary_components(
     update_data: SalaryComponentUpdate,
+    current_user: dict = Depends(require_hr_roles_only),
     db: Session = Depends(get_db)
 ):
     """Update salary components (earnings/deductions) by employee_id and month"""
@@ -119,7 +134,13 @@ def get_salary_history(employee_id: str, db: Session = Depends(get_db)):
 
 
 @router.delete("/force-delete/{employee_id}/{month}/{component_name}")
-def force_delete_component(employee_id: str, month: str, component_name: str, db: Session = Depends(get_db)):
+def force_delete_component(
+    employee_id: str,
+    month: str,
+    component_name: str,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     """Force delete a specific salary component"""
     try:
         print(f"API DELETE REQUEST: employee_id={employee_id}, month={month}, component_name={component_name}")

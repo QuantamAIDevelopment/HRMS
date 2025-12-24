@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Header, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from src.schemas.auth_new import (
     LoginRequest, SignupRequest, ChangePasswordRequest, ForgotPasswordRequest,
@@ -111,65 +111,40 @@ security_scheme = HTTPBearer()
 
 @router.put("/change-password", response_model=MessageResponse, tags=["Authentication"], summary="Change Password")
 async def change_password(
-    request: Request,
-    credentials: HTTPAuthorizationCredentials = Depends(security_scheme),
+    request: ChangePasswordRequest,
+    current_user_email: str = Depends(get_current_user_email),
     db: Session = Depends(get_db)
 ):
-    from src.core.security import get_password_hash, verify_password, verify_token
-    import json
-   
-    # Parse request body manually
-    try:
-        body = await request.body()
-        data = json.loads(body.decode('utf-8'))
-        current_password = data.get('current_password')
-        new_password = data.get('new_password')
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid request format: {str(e)}"
-        )
-   
-    if not current_password or not new_password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Both current_password and new_password are required"
-        )
-    
-    # Get user email from token
-    user_email = verify_token(credentials.credentials)
+    from src.core.security import get_password_hash, verify_password
     
     # Get actual user from database
-    current_user = db.query(User).filter(User.email == user_email).first()
+    current_user = db.query(User).filter(User.email == current_user_email).first()
     if not current_user:
         raise HTTPException(status_code=404, detail="User not found")
    
-    # JWT Token Required: get_current_user dependency validates the Bearer token
-    # User Authentication: Checks if user exists from token (handled by get_current_user)
-   
     # New Password Length: Minimum 6 characters
-    if len(new_password) < 6:
+    if len(request.new_password) < 6:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password must be at least 6 characters long"
         )
    
     # Current Password Verification: Must provide correct current password
-    if not verify_password(current_password, current_user.hashed_password):
+    if not verify_password(request.current_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect"
         )
    
     # Password Uniqueness: New password cannot be same as current
-    if verify_password(new_password, current_user.hashed_password):
+    if verify_password(request.new_password, current_user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password cannot be the same as current password"
         )
    
     # Update password
-    current_user.hashed_password = get_password_hash(new_password)
+    current_user.hashed_password = get_password_hash(request.new_password)
     db.commit()
    
     return MessageResponse(message="Password changed successfully")

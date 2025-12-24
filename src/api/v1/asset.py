@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.models.session import get_db
+from src.core.security import require_hr_roles_only
 from src.services.asset_service import AssetService
 from src.schemas.asset import AssetCreate, AssetUpdate, AssetResponse, AssetSummary
 from src.models.Employee_models import Assets as Asset
@@ -9,7 +10,11 @@ from src.models.Employee_models import Assets as Asset
 router = APIRouter()
 
 @router.post("/assets/", response_model=AssetResponse, tags=["Asset Management"])
-def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
+def create_asset(
+    asset: AssetCreate,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         return AssetService.create_asset(db, asset)
     except ValueError as e:
@@ -18,21 +23,32 @@ def create_asset(asset: AssetCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/assets/summary", response_model=AssetSummary, tags=["Asset Management"])
-def get_assets_summary(db: Session = Depends(get_db)):
+def get_assets_summary(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         return AssetService.get_summary(db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/assets/history", tags=["Asset Management"])
-def get_assets_history(db: Session = Depends(get_db)):
+def get_assets_history(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         return AssetService.get_assets_history(db)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/assets/edit/{asset_id}", tags=["Asset Management"])
-def edit_asset(asset_id: int, asset: AssetUpdate, db: Session = Depends(get_db)):
+def edit_asset(
+    asset_id: int,
+    asset: AssetUpdate,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         target_asset = db.query(Asset).filter(Asset.asset_id == asset_id).first()
         if not target_asset:
@@ -56,7 +72,11 @@ def edit_asset(asset_id: int, asset: AssetUpdate, db: Session = Depends(get_db))
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.put("/assets/{asset_id}/return", response_model=AssetResponse, tags=["Asset Management"])
-def return_asset(asset_id: int, db: Session = Depends(get_db)):
+def return_asset(
+    asset_id: int,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         returned_asset = AssetService.return_asset(db, asset_id)
         if not returned_asset:
@@ -68,7 +88,11 @@ def return_asset(asset_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/assets/{asset_id}", tags=["Asset Management"])
-def delete_asset(asset_id: int, db: Session = Depends(get_db)):
+def delete_asset(
+    asset_id: int,
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     try:
         success = AssetService.delete_asset(db, asset_id)
         if not success:

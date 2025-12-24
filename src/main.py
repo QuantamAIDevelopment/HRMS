@@ -2,10 +2,12 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPBearer
+from src.core.security import verify_token
 import logging
 
 # Set up logging
@@ -47,6 +49,74 @@ app = FastAPI(
     openapi_url="/openapi.json",
     swagger_ui_parameters={"defaultModelsExpandDepth": -1}
 )
+
+# Add security scheme for Swagger UI
+security = HTTPBearer()
+
+def custom_openapi():
+    if app.openapi_schema:
+        return app.openapi_schema
+    
+    from fastapi.openapi.utils import get_openapi
+    openapi_schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    
+    # Add security scheme
+    openapi_schema["components"]["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Enter JWT token obtained from /api/v1/auth/login"
+        }
+    }
+    
+    # Add global security requirement
+    auth_excluded_paths = ["/api/v1/auth/login", "/api/v1/auth/forgot-password", "/api/v1/auth/verify-otp", "/api/v1/auth/reset-password", "/api/v1/auth/resend-otp", "/api/v1/auth/logout"]
+    for path in openapi_schema["paths"]:
+        for method in openapi_schema["paths"][path]:
+            # Skip specific auth endpoints and system endpoints from requiring authorization
+            if path not in auth_excluded_paths and path not in ["/", "/health", "/docs", "/redoc", "/openapi.json"]:
+                openapi_schema["paths"][path][method]["security"] = [{"BearerAuth": []}]
+    
+    app.openapi_schema = openapi_schema
+    return app.openapi_schema
+
+app.openapi = custom_openapi
+
+# Add authentication middleware
+@app.middleware("http")
+async def auth_middleware(request: Request, call_next):
+    # Skip auth for public endpoints
+    public_paths = ["/", "/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"]
+    auth_excluded_paths = ["/api/v1/auth/login", "/api/v1/auth/forgot-password", "/api/v1/auth/verify-otp", "/api/v1/auth/reset-password", "/api/v1/auth/resend-otp", "/api/v1/auth/logout"]
+    
+    if request.url.path in public_paths or request.url.path in auth_excluded_paths:
+        return await call_next(request)
+    
+    # Check for Authorization header
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated"}
+        )
+    
+    # Verify JWT token
+    try:
+        token = auth_header.split(" ")[1]
+        verify_token(token)
+    except Exception:
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"detail": "Not authenticated"}
+        )
+    
+    return await call_next(request)
 
 # Add custom exception handler for validation errors
 @app.exception_handler(RequestValidationError)
