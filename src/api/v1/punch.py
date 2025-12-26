@@ -16,7 +16,7 @@ def punch_in(employee_id: str, db: Session = Depends(get_db)):
         
         # Check if already punched in today
         result = db.execute(text(
-            "SELECT COUNT(*) FROM attendance WHERE employee_id = :emp_id AND attendance_date = :today AND is_active = true"
+            "SELECT COUNT(*) FROM attendance WHERE employee_id = :emp_id AND attendance_date = :today AND punch_out IS NULL"
         ), {"emp_id": employee_id, "today": today})
         
         if result.scalar() > 0:
@@ -24,12 +24,12 @@ def punch_in(employee_id: str, db: Session = Depends(get_db)):
         
         # Insert attendance record
         db.execute(text(
-            "INSERT INTO attendance (employee_id, attendance_date, punch_in_time, status, is_active, created_at, updated_at) VALUES (:emp_id, :today, :punch_time, 'Present', true, NOW(), NOW())"
-        ), {"emp_id": employee_id, "today": today, "punch_time": now})
+            "INSERT INTO attendance (employee_id, attendance_date, punch_in, status, created_at, updated_at) VALUES (:emp_id, :today, :punch_time, 'Present', NOW(), NOW())"
+        ), {"emp_id": employee_id, "today": today, "punch_time": current_time})
         
         db.commit()
         
-        return {"message": "Punched in successfully", "date": today, "time": now}
+        return {"message": "Punched in successfully", "date": today, "time": current_time}
         
     except Exception as e:
         db.rollback()
@@ -45,7 +45,7 @@ def punch_out(employee_id: str, db: Session = Depends(get_db)):
         
         # Check if punched in today
         result = db.execute(text(
-            "SELECT attendance_id, punch_in_time FROM attendance WHERE employee_id = :emp_id AND attendance_date = :today AND is_active = true AND punch_out_time IS NULL"
+            "SELECT attendance_id, punch_in FROM attendance WHERE employee_id = :emp_id AND attendance_date = :today AND punch_out IS NULL"
         ), {"emp_id": employee_id, "today": today})
         
         record = result.fetchone()
@@ -53,24 +53,26 @@ def punch_out(employee_id: str, db: Session = Depends(get_db)):
             raise HTTPException(status_code=400, detail="No active punch-in found for today")
         
         attendance_id = record.attendance_id
-        punch_in_time = record.punch_in_time
+        punch_in_time = record.punch_in
         
-        # Calculate total hours
-        total_seconds = (now - punch_in_time).total_seconds()
-        total_hours = round(total_seconds / 3600, 2)
+        # Calculate work hours
+        punch_in_dt = datetime.combine(today, punch_in_time)
+        punch_out_dt = datetime.combine(today, current_time)
+        total_seconds = (punch_out_dt - punch_in_dt).total_seconds()
+        work_hours = round(total_seconds / 3600, 2)
         
         # Update attendance record
         db.execute(text(
-            "UPDATE attendance SET punch_out_time = :punch_out, total_hours = :hours, is_active = false, updated_at = NOW() WHERE attendance_id = :att_id"
-        ), {"punch_out": now, "hours": total_hours, "att_id": attendance_id})
+            "UPDATE attendance SET punch_out = :punch_out, work_hours = :hours, updated_at = NOW() WHERE attendance_id = :att_id"
+        ), {"punch_out": current_time, "hours": work_hours, "att_id": attendance_id})
         
         db.commit()
         
         return {
             "message": "Punched out successfully", 
             "date": today, 
-            "punch_out_time": now,
-            "total_hours": total_hours
+            "punch_out_time": current_time,
+            "work_hours": work_hours
         }
         
     except Exception as e:
@@ -83,7 +85,7 @@ def get_recent_attendance(employee_id: str, db: Session = Depends(get_db)):
         from sqlalchemy import text
         
         result = db.execute(text("""
-            SELECT attendance_date, punch_in_time, punch_out_time, total_hours, status
+            SELECT attendance_date, punch_in, punch_out, work_hours, status
             FROM attendance 
             WHERE employee_id = :emp_id 
             ORDER BY attendance_date DESC 
@@ -96,9 +98,9 @@ def get_recent_attendance(employee_id: str, db: Session = Depends(get_db)):
         for record in records:
             attendance_list.append({
                 "date": record.attendance_date,
-                "punch_in_time": record.punch_in_time,
-                "punch_out_time": record.punch_out_time,
-                "total_hours": record.total_hours,
+                "punch_in": record.punch_in,
+                "punch_out": record.punch_out,
+                "work_hours": record.work_hours,
                 "status": record.status
             })
         

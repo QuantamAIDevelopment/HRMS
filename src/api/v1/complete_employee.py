@@ -3,7 +3,7 @@ from fastapi.exceptions import RequestValidationError
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from core.deps import get_db
-from src.core.security import require_hr_roles_only
+from src.core.security import require_hr_roles_only, require_employee_manager_hr_roles
 import logging
 
 # Set up logging
@@ -192,7 +192,7 @@ def test_database_connection(
 @router.get("/complete-employee/{employee_id}")
 def get_complete_employee(
     employee_id: str,
-    current_user: dict = Depends(require_hr_roles_only),
+    current_user: dict = Depends(require_employee_manager_hr_roles),
     db: Session = Depends(get_db)
 ):
     # Get all employee data
@@ -287,8 +287,7 @@ def get_complete_employee(
             "document_name": doc.document_name,
             "category": doc.category,
             "upload_date": str(doc.upload_date),
-            "status": doc.status,
-            "file_data": safe_decode_binary(doc.files) if doc.files else None
+            "status": doc.status
         } for doc in documents],
         "assets": [{
             "asset_id": asset.asset_id,
@@ -402,6 +401,7 @@ async def create_complete_employee(
     # Document Fields (Arrays with file upload, can be empty)
     document_name: List[str] = Form([]),
     category: List[str] = Form([]),
+    document_files: List[UploadFile] = File([]),
 
     
     # Asset Fields (Single entry only) - Make completely optional
@@ -472,12 +472,25 @@ async def create_complete_employee(
                     document_name[i] and document_name[i].strip() and 
                     category[i] and category[i].strip()):
                     
-                    # Add document entry without file for now
+                    # Handle file upload if provided
+                    file_data = None
+                    file_name = "No file uploaded"
+                    
+                    if i < len(document_files) and document_files[i].filename:
+                        try:
+                            file_content = await document_files[i].read()
+                            file_data = file_content
+                            file_name = document_files[i].filename
+                        except Exception as e:
+                            logger.error(f"Error reading file {i}: {e}")
+                            file_data = None
+                            file_name = "File upload failed"
+                    
                     doc_list.append({
                         "document_name": document_name[i].strip(),
                         "category": category[i].strip(),
-                        "file_name": "No file uploaded",
-                        "files": None
+                        "file_name": file_name,
+                        "files": file_data
                     })
         logger.info(f"Document list created: {len(doc_list)} documents")
         
@@ -671,8 +684,7 @@ async def create_complete_employee(
                 file_name=doc.get("file_name"),
                 category=doc.get("category"),
                 upload_date=datetime.now().date(),
-                status="Uploaded" if file_data else "Pending",
-                files=file_data
+                status="Uploaded" if file_data else "Pending"
             )
             db.add(document)
 
@@ -829,8 +841,7 @@ async def create_complete_employee(
                     "document_name": doc.document_name,
                     "category": doc.category,
                     "upload_date": str(doc.upload_date),
-                    "status": doc.status,
-                    "file_data": safe_decode_binary(doc.files) if doc.files else None
+                    "status": doc.status
                 } for doc in created_documents],
                 "assets": [{
                     "asset_id": asset.asset_id,

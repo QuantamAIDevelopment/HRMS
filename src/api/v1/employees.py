@@ -79,7 +79,12 @@ def get_employee(
     monthly_estimate = None
     annual_ctc = getattr(employee, 'annual_ctc', None)
     if annual_ctc:
-        monthly_estimate = int(annual_ctc / 12)
+        try:
+            # Convert string to float/int before division
+            annual_ctc_value = float(annual_ctc) if annual_ctc != "0" else 0
+            monthly_estimate = int(annual_ctc_value / 12) if annual_ctc_value > 0 else 0
+        except (ValueError, TypeError):
+            monthly_estimate = 0
     
     # Calculate leave balances
     leave_balances = EmployeeService.calculate_leave_balances(db, employee_id, employee.annual_leaves)

@@ -173,7 +173,7 @@ class EmployeeDocuments(Base):
     category = Column(String(50), nullable=False)
     upload_date = Column(Date, nullable=False)
     status = Column(String(50), default="Pending")
-    files = Column(LargeBinary, nullable=True)
+   
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 

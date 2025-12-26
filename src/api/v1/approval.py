@@ -5,11 +5,15 @@ from typing import List
 
 from src.models.session import get_db
 from src.models.employee_profile import ProfileEditRequest
+from src.core.security import require_hr_roles_only
 
 router = APIRouter()
 
 @router.get("/profile-requests")
-def get_all_profile_requests(db: Session = Depends(get_db)):
+def get_all_profile_requests(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     requests = db.query(ProfileEditRequest).all()
     return [{
         "id": req.id,
@@ -24,7 +28,10 @@ def get_all_profile_requests(db: Session = Depends(get_db)):
     } for req in requests]
 
 @router.get("/cards")
-def get_approval_cards(db: Session = Depends(get_db)):
+def get_approval_cards(
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     query = text("""
         SELECT 
             COUNT(*) as total_requests,
@@ -42,7 +49,13 @@ def get_approval_cards(db: Session = Depends(get_db)):
     }
 
 @router.put("employee/{employee_id}")
-def update_employee_requests(employee_id: str, status: str = Query(...), comments: str = Query(None), db: Session = Depends(get_db)):
+def update_employee_requests(
+    employee_id: str, 
+    status: str = Query(...), 
+    comments: str = Query(None), 
+    current_user: dict = Depends(require_hr_roles_only),
+    db: Session = Depends(get_db)
+):
     edit_requests = db.query(ProfileEditRequest).filter(
         ProfileEditRequest.employee_id == employee_id,
         ProfileEditRequest.status == "pending"
