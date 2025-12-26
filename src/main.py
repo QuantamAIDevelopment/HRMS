@@ -161,6 +161,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Add CORS middleware
 # In production, CORS origins should come from environment variable
 cors_origins = [
+    "http://20.253.73.207",
     "http://localhost:3000",
     "http://localhost:8000",
     "http://localhost:8005",
