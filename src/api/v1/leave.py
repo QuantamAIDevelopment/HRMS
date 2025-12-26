@@ -66,7 +66,16 @@ def approve_reject_leave(leave_id: str, action: str = Query(...), manager_id: st
         if not leave:
             raise HTTPException(status_code=404, detail="Leave not found")
         
-        leave.status = "APPROVED" if action.lower() == "approve" else "REJECTED"
+        # Set status based on action - handle both formats
+        action_lower = action.lower()
+        if action_lower in ["approve", "approved"]:
+            new_status = "APPROVED"
+        elif action_lower in ["reject", "rejected"]:
+            new_status = "REJECTED"
+        else:
+            raise HTTPException(status_code=400, detail=f"Invalid action: {action}. Use 'approve', 'approved', 'reject', or 'rejected'")
+        
+        leave.status = new_status
         db.commit()
         db.refresh(leave)
         
@@ -77,7 +86,7 @@ def approve_reject_leave(leave_id: str, action: str = Query(...), manager_id: st
             start_date=leave.start_date,
             end_date=leave.end_date,
             reason=leave.reason,
-            status=leave.status
+            status=new_status  # Use the new_status variable to ensure correct response
         )
     except HTTPException:
         raise

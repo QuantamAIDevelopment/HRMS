@@ -95,26 +95,32 @@ async def auth_middleware(request: Request, call_next):
     public_paths = ["/", "/health", "/docs", "/redoc", "/openapi.json", "/favicon.ico"]
     auth_excluded_paths = ["/api/v1/auth/login", "/api/v1/auth/forgot-password", "/api/v1/auth/verify-otp", "/api/v1/auth/reset-password", "/api/v1/auth/resend-otp", "/api/v1/auth/logout"]
     
-    if request.url.path in public_paths or request.url.path in auth_excluded_paths:
+    # Allow all static files for Swagger UI
+    if request.url.path.startswith("/static/") or request.url.path in public_paths or request.url.path in auth_excluded_paths:
         return await call_next(request)
     
-    # Check for Authorization header
-    auth_header = request.headers.get("Authorization")
-    if not auth_header or not auth_header.startswith("Bearer "):
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"detail": "Not authenticated"}
-        )
+    # Skip auth for API endpoints that don't require authentication
+    if request.url.path in auth_excluded_paths:
+        return await call_next(request)
     
-    # Verify JWT token
-    try:
-        token = auth_header.split(" ")[1]
-        verify_token(token)
-    except Exception:
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"detail": "Not authenticated"}
-        )
+    # Check for Authorization header only for API endpoints
+    if request.url.path.startswith("/api/"):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header or not auth_header.startswith("Bearer "):
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Not authenticated"}
+            )
+        
+        # Verify JWT token
+        try:
+            token = auth_header.split(" ")[1]
+            verify_token(token)
+        except Exception:
+            return JSONResponse(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                content={"detail": "Not authenticated"}
+            )
     
     return await call_next(request)
 

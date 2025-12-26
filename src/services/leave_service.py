@@ -181,7 +181,16 @@ class ManagerService:
         leave = db.query(Leave).filter(Leave.leave_id == int(leave_id)).first()
         if not leave:
             return None
-        leave.status = "APPROVED" if action.lower() == "approve" else "REJECTED"
+        
+        # Handle both formats of action
+        action_lower = action.lower()
+        if action_lower in ["approve", "approved"]:
+            leave.status = "APPROVED"
+        elif action_lower in ["reject", "rejected"]:
+            leave.status = "REJECTED"
+        else:
+            leave.status = "REJECTED"  # Default fallback
+        
         db.commit()
         db.refresh(leave)
         return ManagerLeaveResponse(leave_id=leave.leave_id, manager_id=leave.employee_id, leave_type=leave.leave_type, start_date=leave.start_date, end_date=leave.end_date, reason=leave.reason, status=leave.status, approved_by=hr_executive_id, comments=comments)
@@ -281,7 +290,16 @@ class HRExecutiveService:
         leave = db.query(Leave).filter(Leave.leave_id == int(leave_id)).first()
         if not leave:
             return None
-        leave.status = "APPROVED" if action.lower() == "approve" else "REJECTED"
+        
+        # Handle both formats of action
+        action_lower = action.lower()
+        if action_lower in ["approve", "approved"]:
+            leave.status = "APPROVED"
+        elif action_lower in ["reject", "rejected"]:
+            leave.status = "REJECTED"
+        else:
+            leave.status = "REJECTED"  # Default fallback
+        
         db.commit()
         db.refresh(leave)
         return HRExecutiveLeaveResponse(leave_id=leave.leave_id, hr_executive_id=leave.employee_id, leave_type=leave.leave_type, start_date=leave.start_date, end_date=leave.end_date, reason=leave.reason, status=leave.status, approved_by=hr_manager_id, comments=comments)
